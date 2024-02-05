@@ -1,2 +1,2 @@
-# q2-kegg
-QIIME2 plugin for visualizing KEGG PATHWAY based on KO abundance table
+# q2-pathway
+QIIME2 plugin for visualizing and analyzing pathway information based on gene abundances
