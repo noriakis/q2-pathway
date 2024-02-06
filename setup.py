@@ -13,5 +13,8 @@ setup(
     entry_points={
         'qiime2.plugins': ['q2-pathway=q2_pathway.plugin_setup:plugin']
     },
+    package_data={
+        'q2_pathway': ['citations.bib', 'assets/index.html', 'assets/dist/*']
+    },
     zip_safe=False,
 )

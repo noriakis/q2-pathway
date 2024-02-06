@@ -76,7 +76,6 @@ def kegg(output_dir: str, ko_table: pd.DataFrame, metadata: qiime2.Metadata, pat
             output = nodes.loc[:,["name","tstat_"+prefix]]
             if map_ko:
                 output["description"] = output["name"].apply(lambda x: " ".join([kodic[q] for q in x.split(" ")]))
-            
 
             nodes[prefix] = nodes[prefix].fillna("#808080")
             kegg_map_image1 = pykegg.overlay_opencv_image(nodes, pid=pathway_id, fill_color=prefix,
