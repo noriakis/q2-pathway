@@ -1,0 +1,41 @@
+{% extends 'base.html' %}
+
+{% block head %}
+  <script src='dist/vendor.bundle.js'></script>
+{% endblock %}
+
+{% block content %}
+
+<div class="container-fluid" id="main">
+  <div class="row">
+    <div class="col-lg-12">
+      <a href="metadata.tsv" target="_blank" rel="noopener noreferrer">
+        Download raw data as TSV
+      </a>
+    </div>
+  </div>
+</div>
+
+<hr>
+
+<h2>KO table</h2>
+<a id="ko-csv">Download CSV</a>
+<div id="ko-table"></d>
+
+<script>
+  var d = [];
+  function load_data(columnName, imageStr, koTable, kocsvpath) {
+    d.push({
+      column: columnName,
+      image: imageStr,
+      table: koTable,
+      KOCSVPath: kocsvpath
+    });
+  }
+</script>
+
+{% for column in columns %}
+<script src='{{ column }}?callback=load_data'></script>
+{% endfor %}
+<script src='dist/bundle.js'></script>
+{% endblock %}

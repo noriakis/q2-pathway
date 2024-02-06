@@ -1,0 +1,33 @@
+
+package:
+  name: q2-pathway
+  version: 2024.2
+
+source:
+  path: ../
+
+build:
+  script: make install
+
+requirements:
+  build:
+    - nodejs
+
+  host:
+    - python=3.8
+    - setuptools
+
+  run:
+    - python=3.8
+    - qiime2
+    - q2templates
+    - q2-types
+    - pykegg
+    - numpy
+    - scipy
+    - pandas
+
+  about:
+    home: https://github.com/noriakis/q2-pathway
+    license: BSD-3-Clause
+    license_family: BSD
