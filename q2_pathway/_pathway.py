@@ -33,7 +33,6 @@ def kegg(output_dir: str, ko_table: pd.DataFrame, metadata: qiime2.Metadata, pat
 
     ## Use in script
     metadata_df = metadata.to_dataframe()
-    metadata_df.index
 
     ## Obtain KGML and nodes DataFrame
     graph = pykegg.KGML_graph(pid=pathway_id)
@@ -165,3 +164,42 @@ def kegg(output_dir: str, ko_table: pd.DataFrame, metadata: qiime2.Metadata, pat
     shutil.copytree(
         os.path.join(TEMPLATES, 'dist'),
         os.path.join(output_dir, 'dist'))
+
+
+def gsea(output_dir: str, ko_table: pd.DataFrame, metadata: qiime2.Metadata):
+    ## Filter columns
+    metadata = metadata.filter_ids(ko_table.index)
+    metadata = metadata.filter_columns(column_type='categorical')
+    metadata = metadata.filter_columns(
+        drop_all_unique=True, drop_zero_variance=True, drop_all_missing=True)
+    filenames = []
+
+    ## save out metadata for download in viz
+    metadata.save(os.path.join(output_dir, 'metadata.tsv'))
+
+    ## Use in script
+    metadata_df = metadata.to_dataframe()
+
+    for column in metadata_df.columns:
+        metadata_df_filt = metadata_df[metadata_df[column].notna()]
+        uniq_level = metadata_df_filt[column].unique()
+        base = list(combinations(uniq_level, 2))
+        prefixes = []
+        valdics = dict()
+        for comb in base:
+            ## Sort the level
+            comb = sorted(comb)
+
+            ## User control for ordering these values
+            level1 = comb[0]
+            level2 = comb[1]
+            prefix = column+"_"+level1+"_vs_"+level2
+            prefixes.append(prefix)
+
+            ## T-stats
+            a = metadata_df_filt[metadata_df_filt[column] == level1].index.tolist()
+            b = metadata_df_filt[metadata_df_filt[column] == level2].index.tolist()
+            val = pd.Series(ko_table.columns.map(lambda x: scipy.stats.ttest_ind(ko_table.loc[a, x], ko_table.loc[b, x], equal_var=False).statistic))
+            val.index = ["ko:"+i for i in ko_table.columns]
+            valdic = val.to_dict()
+            valdics[prefix] = valdic
