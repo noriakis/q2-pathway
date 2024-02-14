@@ -15,7 +15,7 @@ import scipy
 from urllib.parse import quote
 from itertools import combinations
 
-ko_url = "https://www.genome.jp/dbget-bin/www_bget?ko:"
+ko_url = "https://www.genome.jp/dbget-bin/www_bget?"
 TEMPLATES = pkg_resources.resource_filename('q2_pathway', 'assets')
 
 def kegg(output_dir: str, ko_table: pd.DataFrame, metadata: qiime2.Metadata, pathway_id: str,
@@ -95,8 +95,8 @@ def kegg(output_dir: str, ko_table: pd.DataFrame, metadata: qiime2.Metadata, pat
 
             csv_path = os.path.join(output_dir, prefix + ".csv")
             output.to_csv(csv_path)
-
-            output.to_csv()
+            
+            output["name"] = output["name"].apply(lambda x: " ".join(['<a href="'+ko_url+i+'">'+i+'</a>' for i in x.split(" ")]))
             ## Save the image
             jsonp = prefix + ".jsonp"
             with open(os.path.join(output_dir, jsonp), 'w') as fh:
@@ -125,7 +125,7 @@ def kegg(output_dir: str, ko_table: pd.DataFrame, metadata: qiime2.Metadata, pat
         if map_ko:
             output["description"] = output["name"].apply(lambda x: " ".join([kodic[q] for q in x.split(" ")]))
 
-
+        output["name"] = output["name"].apply(lambda x: " ".join(['<a href="'+ko_url+i+'">'+i+'</a>' for i in x.split(" ")]))
         nodes["concat"] = nodes.loc[:,prefixes].values.tolist()
         nodes["concat"] = nodes["concat"].apply(lambda x: [i if isinstance(i, str) and i.startswith("#") else "#808080" for i in x])
 
