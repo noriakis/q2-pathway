@@ -15,6 +15,7 @@ import scipy
 from urllib.parse import quote
 from itertools import combinations
 
+ko_url = "https://www.genome.jp/dbget-bin/www_bget?ko:"
 TEMPLATES = pkg_resources.resource_filename('q2_pathway', 'assets')
 
 def kegg(output_dir: str, ko_table: pd.DataFrame, metadata: qiime2.Metadata, pathway_id: str,
