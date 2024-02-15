@@ -2,6 +2,7 @@
 
 from qiime2.plugin import (Plugin, Str, Choices, Int, Bool, Range, Float, Citations, Metadata)
 from q2_types.feature_table import FeatureTable, Frequency
+from q2_types.feature_data import DNAFASTAFormat
 import q2_pathway
 
 citations = Citations.load('citations.bib', package='q2_pathway')
@@ -13,7 +14,7 @@ plugin = Plugin(
     package='q2_pathway',
     description=('QIIME2 plugin for visualizing and analyzing pathway information based on gene abundances.'),
     short_description='Visualize KEGG PATHWAY.',
-    citations=[citations['Sato2023Bioinformatics'], citations['Kanehisa2000NAR']]
+    citations=[citations['Sato2023Bioinformatics'], citations['Kanehisa2000NAR'], citations["Narayan2020BMCGenomics"]]
 )
 
 
@@ -34,4 +35,11 @@ plugin.visualizers.register_function(
     parameters={'metadata': Metadata},
     name="Perform GSEA by the R package fgsea (experimental)",
     description=("Perform GSEA by the R package fgsea (experimental)")
+)
+
+
+## infer
+plugin.methods.register_function(
+    function=q2_pathway.infer,
+    inputs={'rep_seqs': DNAFASTAFormat}
 )
