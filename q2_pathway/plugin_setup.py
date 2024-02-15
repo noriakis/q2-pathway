@@ -2,7 +2,7 @@
 
 from qiime2.plugin import (Plugin, Str, Choices, Int, Bool, Range, Float, Citations, Metadata)
 from q2_types.feature_table import FeatureTable, Frequency
-from q2_types.feature_data import DNAFASTAFormat
+from q2_types.feature_data import FeatureData, Sequence
 import q2_pathway
 
 citations = Citations.load('citations.bib', package='q2_pathway')
@@ -41,5 +41,10 @@ plugin.visualizers.register_function(
 ## infer
 plugin.methods.register_function(
     function=q2_pathway.infer,
-    inputs={'rep_seqs': DNAFASTAFormat}
+    inputs={'sequences': FeatureData[Sequence]},
+    outputs=[('table', FeatureTable[Frequency])],
+    parameters={'threads': Int, 'reference_sequences': Str,
+    'cn_table': Str, 'cn_16s_table': Str},
+    name="Run Piphillin algorithm",
+    description=("Run Piphillin algorithm")
 )
