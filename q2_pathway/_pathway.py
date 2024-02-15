@@ -14,9 +14,11 @@ import pkg_resources
 import scipy
 from urllib.parse import quote
 from itertools import combinations
+import subprocess
 
 ko_url = "https://www.genome.jp/dbget-bin/www_bget?"
 TEMPLATES = pkg_resources.resource_filename('q2_pathway', 'assets')
+
 
 def kegg(output_dir: str, ko_table: pd.DataFrame, metadata: qiime2.Metadata, pathway_id: str,
     map_ko: bool = False, low_color: str = "blue", high_color: str = "red") -> None:
@@ -173,7 +175,12 @@ def gsea(output_dir: str, ko_table: pd.DataFrame, metadata: qiime2.Metadata):
     metadata = metadata.filter_columns(
         drop_all_unique=True, drop_zero_variance=True, drop_all_missing=True)
     filenames = []
-
+    
+    ## Download pathway info
+    kop = pd.read_csv("https://rest.kegg.jp/link/ko/pathway", sep="\t", header=None)
+    kop = kop[kop[0].apply(lambda x: "path:ko" in x)]
+    kop.to_csv(os.path.join(output_dir, "pathway_map.tsv"), sep="\t", index=False, header=None)
+    
     ## save out metadata for download in viz
     metadata.save(os.path.join(output_dir, 'metadata.tsv'))
 
@@ -201,5 +208,43 @@ def gsea(output_dir: str, ko_table: pd.DataFrame, metadata: qiime2.Metadata):
             b = metadata_df_filt[metadata_df_filt[column] == level2].index.tolist()
             val = pd.Series(ko_table.columns.map(lambda x: scipy.stats.ttest_ind(ko_table.loc[a, x], ko_table.loc[b, x], equal_var=False).statistic))
             val.index = ["ko:"+i for i in ko_table.columns]
-            valdic = val.to_dict()
-            valdics[prefix] = valdic
+            val.to_csv(os.path.join(output_dir, "values_"+prefix+".tsv"), sep="\t", header=None)
+            
+            ## Perform GSEA
+            cmd = ["Rscript", path.join(TEMPLATES, "perform_gsea.R"), output_dir, prefix]
+            try:
+                res = subprocess.run(cmd, check=True)
+            except subprocess.CalledProcessError as e:
+                print(e.stderr)
+                raise ValueError("GSEA cannot be performed")
+            
+            ## Read output image
+            gsea_image = Image.open(path.join(output_dir, "gsea_res_"+prefix+".png"))
+            img_byte_arr = io.BytesIO()
+            gsea_image.save(img_byte_arr, format='PNG')
+            img_byte_arr = base64.b64encode(img_byte_arr.getvalue()).decode("utf-8")
+            
+            gseares = pd.read_csv(path.join(output_dir, "gsea_res_"+prefix+".tsv"), sep="\t", index_col=0, header=0)
+            jsonp = prefix + ".jsonp"
+            
+            ## The same structure as kegg
+            with open(os.path.join(output_dir, jsonp), 'w') as fh:
+                fh.write('load_data("%s",' % prefix)
+                json.dump(img_byte_arr, fh)
+                fh.write(",'")
+                table = q2templates.df_to_html(gseares, escape=False)
+                fh.write(table.replace('\n', '').replace("'", "\\'"))
+                fh.write("','")
+                fh.write(quote(prefix+".csv"))
+                fh.write("');")
+            filenames.append(jsonp)
+            
+    index = os.path.join(TEMPLATES, 'index.html')
+    q2templates.render(index, output_dir, context={
+        'columns': [quote(fn) for fn in filenames]
+    })
+    shutil.copytree(
+        os.path.join(TEMPLATES, 'dist'),
+        os.path.join(output_dir, 'dist'))
+
+                

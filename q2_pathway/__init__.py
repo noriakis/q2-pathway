@@ -1,3 +1,3 @@
-from ._pathway import kegg
+from ._pathway import kegg, gsea
 
-__all__ = ['kegg']
+__all__ = ['kegg', 'gsea']

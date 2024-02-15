@@ -15,7 +15,7 @@ export default function init(groupIndex) {
   const controlsRow = plotDiv.append('div').attr('class', 'controls row');
   const img = plotRow.append("center").append("img").attr('id', "ItemPreview").attr("src", "");
 
-  body.insert('h1', ':first-child').text('KEGG PATHWAY image');
+  // body.insert('h1', ':first-child').text('KEGG PATHWAY image');
 
   // Plot main
   document.getElementById("ItemPreview").src = "data:image/png;base64," + data.image;

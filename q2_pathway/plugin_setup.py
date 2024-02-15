@@ -25,3 +25,13 @@ plugin.visualizers.register_function(
     name="Plot KEGG PATHWAY",
     description=("Plot the statistics of KO abundances between group on KEGG PATHWAY image.")
 )
+
+
+## gsea
+plugin.visualizers.register_function(
+    function=q2_pathway.gsea,
+    inputs={'ko_table': FeatureTable[Frequency]},
+    parameters={'metadata': Metadata},
+    name="Perform GSEA by the R package fgsea (experimental)",
+    description=("Perform GSEA by the R package fgsea (experimental)")
+)
