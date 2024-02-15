@@ -235,7 +235,7 @@ def gsea(output_dir: str, ko_table: pd.DataFrame, metadata: qiime2.Metadata):
                 table = q2templates.df_to_html(gseares, escape=False)
                 fh.write(table.replace('\n', '').replace("'", "\\'"))
                 fh.write("','")
-                fh.write(quote(prefix+".csv"))
+                fh.write(quote("gsea_res_"+prefix+".tsv"))
                 fh.write("');")
             filenames.append(jsonp)
             

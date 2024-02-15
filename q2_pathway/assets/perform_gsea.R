@@ -4,6 +4,8 @@ argv <- commandArgs(trailingOnly = TRUE)
 outputDir <- argv[1]
 pref <- argv[2]
 
+cat("Beginning GSEA by fgsea\n")
+cat(pref, "\n")
 
 ## Should be done in python
 pathmap <- read.table(paste0(outputDir, "/pathway_map.tsv"), sep="\t", header=FALSE)
