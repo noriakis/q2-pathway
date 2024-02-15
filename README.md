@@ -28,6 +28,8 @@ The example output:
 <img src="https://github.com/noriakis/software/blob/main/images/q2_pathway_ex2.png?raw=true" width="800px">
 </p>
 
+The example usage:
+
 ```shell
 qiime pathway gsea \
     --i-ko-table ko_metagenome.qza \
