@@ -15,13 +15,17 @@ if (full=="False") {
 }
 
 
-kodf <- read.table(cnTablePath, row.names=1, header=1)
-cn <- read.table(cn16STablePath, row.names=1, sep=",", header=1)
-blast <- read.table(paste0(outputDir, "/blast_out.txt"), sep="\t", header=FALSE)
-blast$V2 <- blast$V2 %>% strsplit(":") %>% vapply("[", 1, FUN.VALUE="a")
+# kodf <- read.table(cnTablePath, row.names=1, header=1)
+# cn <- read.table(cn16STablePath, row.names=1, sep=",", header=1)
+# blast <- read.table(paste0(outputDir, "/blast_out.txt"), sep="\t", header=FALSE)
+# blast$V2 <- blast$V2 %>% strsplit(":") %>% vapply("[", 1, FUN.VALUE="a")
 
-seqtab <- read.table(paste0(outputDir, "/seqtab.txt", sep="\t"), row.names=1, header=1)
+# seqtab <- read.table(paste0(outputDir, "/seqtab.txt", sep="\t"), row.names=1, header=1)
 
-# ex <- loadExample()
-result <- profileMetagenome(seqtab, cn, kodf, blast, full=full)
+ex <- loadExample()
+result <- profileMetagenome(ex$seqtab, ex$cn16s, ex$cnko, ex$blast, full=full)
+
+
+# result <- profileMetagenome(seqtab, cn, kodf, blast, full=full)
+
 write.table(result, paste0(outputDir, "/ko_table.tsv"), sep="\t")

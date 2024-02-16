@@ -11,7 +11,7 @@ TEMPLATES = pkg_resources.resource_filename('q2_pathway', 'assets')
 
 ## Option to use q2-gcn-norm for normalizing by rrnDB
 def infer(sequences: pd.Series,
-	    table: pd.DataFrame,
+	    # table: pd.DataFrame,
 	    reference_sequences: str = path.join(TEMPLATES, "16S_seqs.fasta.gz"),
         cn_table: str = path.join(TEMPLATES, "ko_copynum.tsv.gz"),
         cn_16s_table: str = path.join(TEMPLATES, "16s_cn.tsv.gz"), 
@@ -34,16 +34,22 @@ def infer(sequences: pd.Series,
             '--blast6out',
             path.join(temp_dir, "blast_out.txt"),
             "--threads", str(threads)]
-        try:
-            res = subprocess.run(cmd, check=True)
-        except subprocess.CalledProcessError as e:
-            raise ValueError("Error running vsearch.")
+        # try:
+        #     res = subprocess.run(cmd, check=True)
+        # except subprocess.CalledProcessError as e:
+        #     raise ValueError("Error running vsearch.")
         
-        table.to_csv(path.join(TEMPLATES, "seqtab.txt"), sep="\t")
+        # table.to_csv(path.join(TEMPLATES, "seqtab.txt"), sep="\t")
         cmd = ["Rscript", path.join(TEMPLATES, "perform_piphillin.R"), temp_dir, cn_table, cn_16s_table, str(full)]
         try:
             res = subprocess.run(cmd, check=True)
         except subprocess.CalledProcessError as e:
             raise ValueError("Error running piphillin algorithm.")
-        ko = pd.read_csv(path.join(temp_dir, "ko_table.tsv"), sep="\t", index_col=0, header=0)
+        ko = pd.read_csv(path.join(temp_dir, "ko_table.tsv"), sep="\t", header=0)
+        if full:
+            ko.index = ko.iloc[:,0].map(str) + "_" + ko.iloc[:,1]
+            ko = ko.drop(ko.columns[0], axis=1)
+            ko = ko.drop(ko.columns[0], axis=1)
+            ## This will output tax1_K00001 type index
+        
         return(ko.T)
