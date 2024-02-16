@@ -215,7 +215,6 @@ def gsea(output_dir: str, ko_table: pd.DataFrame, metadata: qiime2.Metadata):
             try:
                 res = subprocess.run(cmd, check=True)
             except subprocess.CalledProcessError as e:
-                print(e.stderr)
                 raise ValueError("GSEA cannot be performed")
             
             ## Read output image

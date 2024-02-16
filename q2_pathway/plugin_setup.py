@@ -44,7 +44,7 @@ plugin.methods.register_function(
     inputs={'sequences': FeatureData[Sequence]},
     outputs=[('table', FeatureTable[Frequency])],
     parameters={'threads': Int, 'reference_sequences': Str,
-    'cn_table': Str, 'cn_16s_table': Str},
+    'cn_table': Str, 'cn_16s_table': Str, 'full': Bool, 'pct_id': Float},
     name="Run Piphillin algorithm",
     description=("Run Piphillin algorithm")
 )
