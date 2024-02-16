@@ -49,7 +49,7 @@ plugin.visualizers.register_function(
 ## infer
 plugin.methods.register_function(
     function=q2_pathway.infer,
-    inputs={'sequences': FeatureData[Sequence]},
+    inputs={'sequences': FeatureData[Sequence], 'table': FeatureData[Frequency]},
     outputs=[('table', FeatureTable[Frequency])],
     parameters={'threads': Int, 'reference_sequences': Str,
     'cn_table': Str, 'cn_16s_table': Str, 'full': Bool, 'pct_id': Float},

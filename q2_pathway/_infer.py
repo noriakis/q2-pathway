@@ -11,6 +11,7 @@ TEMPLATES = pkg_resources.resource_filename('q2_pathway', 'assets')
 
 ## Option to use q2-gcn-norm for normalizing by rrnDB
 def infer(sequences: pd.Series,
+	    table: pd.DataFrame,
 	    reference_sequences: str = path.join(TEMPLATES, "16S_seqs.fasta.gz"),
         cn_table: str = path.join(TEMPLATES, "ko_copynum.tsv.gz"),
         cn_16s_table: str = path.join(TEMPLATES, "16s_cn.tsv.gz"), 
@@ -37,7 +38,8 @@ def infer(sequences: pd.Series,
             res = subprocess.run(cmd, check=True)
         except subprocess.CalledProcessError as e:
             raise ValueError("Error running vsearch.")
-                    
+        
+        table.to_csv(path.join(TEMPLATES, "seqtab.txt"), sep="\t")
         cmd = ["Rscript", path.join(TEMPLATES, "perform_piphillin.R"), temp_dir, cn_table, cn_16s_table, str(full)]
         try:
             res = subprocess.run(cmd, check=True)
