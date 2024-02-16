@@ -47,11 +47,11 @@ def infer(sequences: pd.Series,
         except subprocess.CalledProcessError as e:
             raise ValueError("Error running piphillin algorithm.")
         ko = pd.read_csv(path.join(temp_dir, "ko_table.tsv"), sep="\t", header=0)
-        print(ko)
+
         if full:
             ko.index = ko.iloc[:,0].map(str) + "_" + ko.iloc[:,1]
             ko = ko.drop(ko.columns[0], axis=1)
             ko = ko.drop(ko.columns[0], axis=1)
             ## This will output tax1_K00001 type index
-        
+
         return(ko.T)
