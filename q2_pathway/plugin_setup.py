@@ -17,7 +17,6 @@ plugin = Plugin(
     citations=[citations['Sato2023Bioinformatics'], citations['Kanehisa2000NAR'], citations["Narayan2020BMCGenomics"]]
 )
 
-
 ## kegg
 plugin.visualizers.register_function(
     function=q2_pathway.kegg,
@@ -35,6 +34,15 @@ plugin.visualizers.register_function(
     parameters={'metadata': Metadata},
     name="Perform GSEA by the R package fgsea (experimental)",
     description=("Perform GSEA by the R package fgsea (experimental)")
+)
+
+## summarize
+plugin.visualizers.register_function(
+    function=q2_pathway.summarize,
+    inputs={'ko_table': FeatureTable[Frequency], 'ko_table2': FeatureTable[Frequency]},
+    parameters={'metadata': Metadata},
+    name="Compare the stratified output of functional prediction.",
+    description=("Compare the stratified output of functional prediction.")
 )
 
 

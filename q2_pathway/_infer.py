@@ -15,7 +15,7 @@ def infer(sequences: pd.Series, reference_sequences: str = path.join(TEMPLATES, 
         cn_16s_table: str = path.join(TEMPLATES, "cn_16s.tsv.gz"), threads: int = 1, full: bool = False,
         pct_id: float = 0.99) -> pd.DataFrame:
     with TemporaryDirectory() as temp_dir:
-    	repseq = path.join(temp_dir, "rep_seqs.fna")
+        repseq = path.join(temp_dir, "rep_seqs.fna")
         cmd = ["vsearch", "--usearch_global", repseq, "--db", reference_sequences, "--id", pct_id,
             '--top_hits_only',
             '--maxaccepts', '0',
@@ -29,7 +29,7 @@ def infer(sequences: pd.Series, reference_sequences: str = path.join(TEMPLATES, 
         # except subprocess.CalledProcessError as e:
         #     raise ValueError("Error running vsearch.")
                     
-        cmd = ["Rscript", path.join(TEMPLATES, "perform_piphillin.R"), temp_dir]
+        cmd = ["Rscript", path.join(TEMPLATES, "perform_piphillin.R"), temp_dir, cn_table, cn_16s_table, str(full)]
         try:
             res = subprocess.run(cmd, check=True)
         except subprocess.CalledProcessError as e:
