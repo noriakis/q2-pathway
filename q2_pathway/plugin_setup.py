@@ -39,7 +39,7 @@ plugin.visualizers.register_function(
 plugin.visualizers.register_function(
     function=q2_pathway.gsea,
     inputs={'ko_table': FeatureTable[Frequency]},
-    parameters={'metadata': Metadata, 'tss': Bool},
+    parameters={'metadata': Metadata, 'tss': Bool, 'method': Str},
     name="Perform GSEA by the R package fgsea (experimental)",
     description=("Perform GSEA by the R package fgsea (experimental)")
 )
@@ -54,7 +54,8 @@ plugin.visualizers.register_function(
         'metadata': Metadata,
         'first': Int,
         'tss': Bool,
-        'method': Str
+        'method': Str,
+        'candidate': Str
     },
     name="Summarize the output of functional prediction.",
     description=("Summarize the output of functional prediction.")
@@ -64,7 +65,8 @@ plugin.visualizers.register_function(
 ## infer
 plugin.methods.register_function(
     function=q2_pathway.infer,
-    inputs={'sequences': FeatureData[Sequence],
+    inputs={
+        'sequences': FeatureData[Sequence],
         'seq_table': FeatureTable[Frequency]
     },
     outputs=[('table', FeatureTable[Frequency])],

@@ -23,6 +23,7 @@ def summarize(output_dir: str,
     tables: pd.DataFrame,
     metadata: qiime2.Metadata,
     first: int = 100,
+    candidate: str = None,
     tss: bool = False,
     method: str = "pearson") -> None:
 
@@ -54,9 +55,13 @@ def summarize(output_dir: str,
 
     ## Use in script
     metadata_df = metadata.to_dataframe()
-    ## First table will be used for subset
-    mean_val = tables[0].loc[:, all_kos].apply(lambda x: np.nanmean(x), axis=0).sort_values(ascending=False)
-    all_cols = mean_val.head(first).index.values
+    
+    if candidate is None:
+        ## First table will be used for subset
+        mean_val = tables[0].loc[:, all_kos].apply(lambda x: np.nanmean(x), axis=0).sort_values(ascending=False)
+        all_cols = mean_val.head(first).index.values
+    else:
+        all_cols = [candidate]
 
     ## Loose checking (tax1_K00001)
     if "_" in all_cols[0]:

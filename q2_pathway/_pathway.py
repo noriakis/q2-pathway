@@ -76,23 +76,26 @@ def kegg(output_dir: str, ko_table: pd.DataFrame, metadata: qiime2.Metadata, pat
                 valdic = val.to_dict()
                 valdics[prefix] = valdic
             else:
+                ## We should invert the levels when using effect
+                prefix = column+"_"+level2+"_vs_"+level1
                 ## ALDEx2
                 ## This will take time if you have many KOs across many metadata
                 metapath = path.join(TEMPLATES,"meta_aldex2.tsv")
                 kotablepath = path.join(TEMPLATES,"ko_table.tsv")
-                aldexpath = path.join(TEMPLATES,"aldex2_res_"+prefix+".tsv")
+                aldexpath = path.join(output_dir,"aldex2_res_"+prefix+".tsv")
+                aldeximagepath = path.join(output_dir,"aldex2_res_"+prefix+".png")
                 
                 ## Make two conditions
                 metadata_df_tmp = metadata_df_filt[(metadata_df_filt[column]==level1)|(metadata_df_filt[column]==level2)]
                 metadata_df_tmp.to_csv(metapath, sep="\t")
                 ko_table.to_csv(kotablepath, sep="\t")
                 cmd = ["Rscript", path.join(TEMPLATES, "perform_aldex2.R"), kotablepath,
-                    metapath, column, aldexpath]
+                    metapath, column, aldexpath, aldeximagepath]
                 try:
                     res = subprocess.run(cmd, check=True)
                 except subprocess.CalledProcessError as e:
                     raise ValueError("ALDEx2 cannot be performed")
-                res = pd.read_csv(aldexpath, sep="\t")
+                res = pd.read_csv(aldexpath, sep="\t", index_col=0, header=0)
                 
                 ## Better to select by the users
                 val = res["effect"]
@@ -100,6 +103,25 @@ def kegg(output_dir: str, ko_table: pd.DataFrame, metadata: qiime2.Metadata, pat
                 valdic = val.to_dict()
                 valdics[prefix] = valdic
                 
+                ## Read output image
+                gsea_image = Image.open(aldeximagepath)
+                img_byte_arr = io.BytesIO()
+                gsea_image.save(img_byte_arr, format='PNG')
+                img_byte_arr = base64.b64encode(img_byte_arr.getvalue()).decode("utf-8")
+                
+                aldex2_out = prefix + "_aldex2_res"
+                ## Save the aldex2 out
+                jsonp = aldex2_out + ".jsonp"
+                with open(os.path.join(output_dir, jsonp), 'w') as fh:
+                    fh.write('load_data("%s",' % aldex2_out)
+                    json.dump(img_byte_arr, fh)
+                    fh.write(",'")
+                    table = q2templates.df_to_html(res, escape=False)
+                    fh.write(table.replace('\n', '').replace("'", "\\'"))
+                    fh.write("','")
+                    fh.write(quote("aldex2_res_"+prefix+".tsv"))
+                    fh.write("');")
+                filenames.append(jsonp)
 
             nodes = pykegg.append_colors_continuous_values(nodes, valdic,
                     new_color_column=prefix, two_slope=False, node_name_column="name", delim=" ",
@@ -198,7 +220,8 @@ def kegg(output_dir: str, ko_table: pd.DataFrame, metadata: qiime2.Metadata, pat
         os.path.join(output_dir, 'dist'))
 
 
-def gsea(output_dir: str, ko_table: pd.DataFrame, metadata: qiime2.Metadata, tss: bool = False):
+def gsea(output_dir: str, ko_table: pd.DataFrame, metadata: qiime2.Metadata, tss: bool = False,
+    method: str = "t"):
     
     if tss:
         ko_table = ko_table.apply(lambda x: x/sum(x), axis=1)
@@ -238,11 +261,58 @@ def gsea(output_dir: str, ko_table: pd.DataFrame, metadata: qiime2.Metadata, tss
             prefixes.append(prefix)
 
             ## T-stats
-            a = metadata_df_filt[metadata_df_filt[column] == level1].index.tolist()
-            b = metadata_df_filt[metadata_df_filt[column] == level2].index.tolist()
-            val = pd.Series(ko_table.columns.map(lambda x: scipy.stats.ttest_ind(ko_table.loc[a, x], ko_table.loc[b, x], equal_var=False).statistic))
-            val.index = ["ko:"+i for i in ko_table.columns]
-            val.to_csv(os.path.join(output_dir, "values_"+prefix+".tsv"), sep="\t", header=None)
+            if method == "t":
+                a = metadata_df_filt[metadata_df_filt[column] == level1].index.tolist()
+                b = metadata_df_filt[metadata_df_filt[column] == level2].index.tolist()
+                val = pd.Series(ko_table.columns.map(lambda x: scipy.stats.ttest_ind(ko_table.loc[a, x], ko_table.loc[b, x], equal_var=False).statistic))
+                val.index = ["ko:"+i for i in ko_table.columns]
+                val.to_csv(os.path.join(output_dir, "values_"+prefix+".tsv"), sep="\t", header=None)
+            else:
+                ## We should invert the levels when using effect
+                prefix = column+"_"+level2+"_vs_"+level1
+                ## ALDEx2
+                ## This will take time if you have many KOs across many metadata
+                metapath = path.join(TEMPLATES,"meta_aldex2.tsv")
+                kotablepath = path.join(TEMPLATES,"ko_table.tsv")
+                aldexpath = path.join(output_dir,"aldex2_res_"+prefix+".tsv")
+                aldeximagepath = path.join(output_dir,"aldex2_res_"+prefix+".png")
+                
+                ## Make two conditions
+                metadata_df_tmp = metadata_df_filt[(metadata_df_filt[column]==level1)|(metadata_df_filt[column]==level2)]
+                metadata_df_tmp.to_csv(metapath, sep="\t")
+                ko_table.to_csv(kotablepath, sep="\t")
+                cmd = ["Rscript", path.join(TEMPLATES, "perform_aldex2.R"), kotablepath,
+                    metapath, column, aldexpath, aldeximagepath]
+                try:
+                    res = subprocess.run(cmd, check=True)
+                except subprocess.CalledProcessError as e:
+                    raise ValueError("ALDEx2 cannot be performed")
+                res = pd.read_csv(aldexpath, sep="\t", index_col=0, header=0)
+                
+                ## Better to select by the users
+                val = res["effect"]
+                val.index = ["ko:"+i for i in val.index.values]
+                val.to_csv(os.path.join(output_dir, "values_"+prefix+".tsv"), sep="\t", header=None)
+                
+                ## Read output image
+                gsea_image = Image.open(aldeximagepath)
+                img_byte_arr = io.BytesIO()
+                gsea_image.save(img_byte_arr, format='PNG')
+                img_byte_arr = base64.b64encode(img_byte_arr.getvalue()).decode("utf-8")
+                
+                aldex2_out = prefix + "_aldex2_res"
+                ## Save the aldex2 out
+                jsonp = aldex2_out + ".jsonp"
+                with open(os.path.join(output_dir, jsonp), 'w') as fh:
+                    fh.write('load_data("%s",' % aldex2_out)
+                    json.dump(img_byte_arr, fh)
+                    fh.write(",'")
+                    table = q2templates.df_to_html(res, escape=False)
+                    fh.write(table.replace('\n', '').replace("'", "\\'"))
+                    fh.write("','")
+                    fh.write(quote("aldex2_res_"+prefix+".tsv"))
+                    fh.write("');")
+                filenames.append(jsonp)
             
             ## Perform GSEA
             cmd = ["Rscript", path.join(TEMPLATES, "perform_gsea.R"), output_dir, prefix]
