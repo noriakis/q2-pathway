@@ -1,5 +1,11 @@
 library(fgsea)
 
+# pathway_name_url = "https://rest.kegg.jp/list/pathway"
+# pnm <- data.table::fread(pathway_name_url, header=FALSE)
+# pnm$V1 <- gsub("map", "ko", pnm$V1)
+# namec <- pnm$V2
+# names(namec) <- pnm$V1
+
 argv <- commandArgs(trailingOnly = TRUE)
 outputDir <- argv[1]
 pref <- argv[2]
@@ -32,6 +38,7 @@ ores <- data.frame(res)
 ## Changing list to char
 ores[[8]] <- unlist(lapply(ores[[8]], function(x) paste0(x, collapse="/")))
 ores <- ores[order(ores$padj), ]
+# ores[["pathway"]] <- namec[ores[[1]]]
 
 write.table(ores, paste0(outputDir, "/gsea_res_", pref, ".tsv"), sep="\t")
 

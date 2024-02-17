@@ -168,7 +168,11 @@ def kegg(output_dir: str, ko_table: pd.DataFrame, metadata: qiime2.Metadata, pat
         os.path.join(output_dir, 'dist'))
 
 
-def gsea(output_dir: str, ko_table: pd.DataFrame, metadata: qiime2.Metadata):
+def gsea(output_dir: str, ko_table: pd.DataFrame, metadata: qiime2.Metadata, tss: bool = False):
+    
+    if tss:
+        ko_table = ko_table.apply(lambda x: x/sum(x), axis=1)
+
     ## Filter columns
     metadata = metadata.filter_ids(ko_table.index)
     metadata = metadata.filter_columns(column_type='categorical')

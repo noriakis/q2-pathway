@@ -27,7 +27,7 @@ def summarize(output_dir: str,
     ko_table2: pd.DataFrame = None) -> None:
 
     if tss:
-        ko_table = ko_table.apply(lambda x: x / sum(x))
+        ko_table = ko_table.apply(lambda x: x / sum(x), axis=1)
 
     strat = False
     ## Assuming stratified output for ko_table
@@ -55,7 +55,7 @@ def summarize(output_dir: str,
     if ko_table2 is not None:
         
         if tss:
-            ko_table2 = ko_table2.apply(lambda x: x / sum(x))
+            ko_table2 = ko_table2.apply(lambda x: x / sum(x), axis=1)
 
         all_cols = list(set(ko_table2.columns.values) & set(ko_table.columns.values))
         

@@ -31,7 +31,7 @@ plugin.visualizers.register_function(
 plugin.visualizers.register_function(
     function=q2_pathway.gsea,
     inputs={'ko_table': FeatureTable[Frequency]},
-    parameters={'metadata': Metadata},
+    parameters={'metadata': Metadata, 'tss': Bool},
     name="Perform GSEA by the R package fgsea (experimental)",
     description=("Perform GSEA by the R package fgsea (experimental)")
 )
