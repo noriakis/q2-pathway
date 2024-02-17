@@ -61,6 +61,7 @@ def summarize(output_dir: str,
     ## Loose checking (tax1_K00001)
     if "_" in all_cols[0]:
         strat = True
+        ko_table = tables[0]
         
     ## As PICRUSt2 does not produce stratified table by default
     if strat:
