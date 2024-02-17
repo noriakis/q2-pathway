@@ -39,8 +39,11 @@ plugin.visualizers.register_function(
 ## summarize
 plugin.visualizers.register_function(
     function=q2_pathway.summarize,
-    inputs={'ko_table': FeatureTable[Frequency]},
-    parameters={'metadata': Metadata},
+    inputs={
+        'ko_table': FeatureTable[Frequency],
+        'ko_table2': FeatureTable[Frequency]
+    },
+    parameters={'metadata': Metadata, 'first': Int, 'tss': Bool},
     name="Summarize the output of functional prediction.",
     description=("Summarize the output of functional prediction.")
 )
