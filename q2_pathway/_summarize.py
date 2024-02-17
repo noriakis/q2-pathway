@@ -24,7 +24,8 @@ def summarize(output_dir: str,
     metadata: qiime2.Metadata,
     first: int = 100,
     tss: bool = False,
-    ko_table2: pd.DataFrame = None) -> None:
+    ko_table2: pd.DataFrame = None,
+    method: str = "pearson") -> None:
 
     if tss:
         ko_table = ko_table.apply(lambda x: x / sum(x), axis=1)
@@ -147,7 +148,7 @@ def summarize(output_dir: str,
 
                     csv_path = os.path.join(output_dir, prefix + ".csv")
                     
-                    corr = ko_table.loc[all_samples, ko].corr(ko_table2.loc[all_samples, ko])
+                    corr = ko_table.loc[all_samples, ko].corr(ko_table2.loc[all_samples, ko], method=method)
                     
                     output = pd.DataFrame(conc.loc[:,[column, ko, "category"]]).groupby("category").apply(lambda x: x.groupby(column).mean(ko))
                     output["corr"] = corr

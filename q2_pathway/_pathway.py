@@ -180,7 +180,7 @@ def gsea(output_dir: str, ko_table: pd.DataFrame, metadata: qiime2.Metadata, tss
         drop_all_unique=True, drop_zero_variance=True, drop_all_missing=True)
     filenames = []
     
-    ## Download pathway info
+    ## Download pathway info for GSEA and output
     kop = pd.read_csv("https://rest.kegg.jp/link/ko/pathway", sep="\t", header=None)
     kop = kop[kop[0].apply(lambda x: "path:ko" in x)]
     kop.to_csv(os.path.join(output_dir, "pathway_map.tsv"), sep="\t", index=False, header=None)
@@ -228,6 +228,7 @@ def gsea(output_dir: str, ko_table: pd.DataFrame, metadata: qiime2.Metadata, tss
             img_byte_arr = base64.b64encode(img_byte_arr.getvalue()).decode("utf-8")
             
             gseares = pd.read_csv(path.join(output_dir, "gsea_res_"+prefix+".tsv"), sep="\t", index_col=0, header=0)
+            gseares["pathway"] = gseares["pathway"].apply(lambda x: '<a href="https://www.kegg.jp/entry/pathway+'+x.split(":")[1]+'">'+x+'</a>')
             jsonp = prefix + ".jsonp"
             
             ## The same structure as kegg

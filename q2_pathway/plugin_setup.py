@@ -43,7 +43,12 @@ plugin.visualizers.register_function(
         'ko_table': FeatureTable[Frequency],
         'ko_table2': FeatureTable[Frequency]
     },
-    parameters={'metadata': Metadata, 'first': Int, 'tss': Bool},
+    parameters={
+        'metadata': Metadata,
+        'first': Int,
+        'tss': Bool,
+        'method': Str
+    },
     name="Summarize the output of functional prediction.",
     description=("Summarize the output of functional prediction.")
 )
