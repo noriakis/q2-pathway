@@ -20,20 +20,30 @@ ko_url = "https://www.genome.jp/dbget-bin/www_bget?"
 
 
 def summarize(output_dir: str,
-    ko_table: pd.DataFrame,
+    tables: pd.DataFrame,
     metadata: qiime2.Metadata,
     first: int = 100,
     tss: bool = False,
-    ko_table2: pd.DataFrame = None,
     method: str = "pearson") -> None:
 
+    tbl_len = len(tables)
+
     if tss:
-        ko_table = ko_table.apply(lambda x: x / sum(x), axis=1)
+        tables = [ko_table.apply(lambda x: x / sum(x), axis=1) for ko_table in tables]
 
     strat = False
-    ## Assuming stratified output for ko_table
+
+    # all_cols = ko_table.columns.values
+    filenames = []
+    
+    kos = [ko_table.columns.values for ko_table in tables]
+    all_kos = list(set.intersection(*map(set, kos)))
+    samples = [ko_table.index.values for ko_table in tables]
+    all_samples = list(set.intersection(*map(set, samples)))
+
+    ## Assuming unstratified output for ko_table
     ## Filter columns
-    metadata = metadata.filter_ids(ko_table.index)
+    metadata = metadata.filter_ids(all_samples)
     metadata = metadata.filter_columns(column_type='categorical')
     metadata = metadata.filter_columns(
         drop_all_unique=True, drop_zero_variance=True, drop_all_missing=True)
@@ -44,29 +54,10 @@ def summarize(output_dir: str,
 
     ## Use in script
     metadata_df = metadata.to_dataframe()
-    mean_val = ko_table.apply(lambda x: np.nanmean(x), axis=0).sort_values(ascending=False)
+    ## First table will be used for subset
+    mean_val = tables[0].loc[:, all_kos].apply(lambda x: np.nanmean(x), axis=0).sort_values(ascending=False)
     all_cols = mean_val.head(first).index.values
 
-    # all_cols = ko_table.columns.values
-    filenames = []
-    
-        
-    
-    ## If table2 is given, all the intersection will be used
-    if ko_table2 is not None:
-        
-        if tss:
-            ko_table2 = ko_table2.apply(lambda x: x / sum(x), axis=1)
-
-        all_cols = list(set(ko_table2.columns.values) & set(ko_table.columns.values))
-        
-        ## First table will be used for subset
-        mean_val = ko_table.loc[:, all_cols].apply(lambda x: np.nanmean(x), axis=0).sort_values(ascending=False)
-        all_cols = mean_val.head(first).index.values
-        
-        all_samples = list(set(ko_table2.index.values) & set(ko_table.index.values))
-
-    
     ## Loose checking (tax1_K00001)
     if "_" in all_cols[0]:
         strat = True
@@ -125,66 +116,39 @@ def summarize(output_dir: str,
                 filenames.append(jsonp)
                 ## Per-KO stratified abundance per species
                 
-    else:
+    else: ## If un-stratified
         all_kos = list(set(all_cols))
         for column in metadata_df.columns:
             metadata_df_filt = metadata_df[metadata_df[column].notna()]
             levels = metadata_df_filt[column].unique()
-            data = pd.concat([ko_table, metadata_df_filt],
-                             axis=1, join='inner')
-            if ko_table2 is not None:
-                data2 = pd.concat([ko_table2, metadata_df_filt],
-                    axis=1, join="inner")
-            
+            concs = []
+            for e, table in enumerate(tables):
+                tmp = pd.concat([table, metadata_df_filt], axis=1, join='inner')
+                tmp["category"] = "data"+str(e)
+                concs.append(tmp)
+                
+            corrs = []
             for ko in all_kos:
-                prefix = column+"_"+ko
-                
-                ## Clear plot
-                
-                if ko_table2 is None:
-                    plt.figure()
-                    bp = sns.boxplot(data=data, x=column, y=ko)
-                    fig = bp.get_figure()
-                    fig.savefig(path.join(output_dir, prefix + ".png"))
-                    plt.close()
+                prefix = column+"_"+ko            
+                conc = pd.concat([data.loc[:, [column, ko,"category"]] for data in concs], axis=0)
                     
-                    img = Image.open(path.join(output_dir, column+"_"+ko+".png"))
-                    img_byte_arr = io.BytesIO()
-                    img.save(img_byte_arr, format='PNG')
-                    img_byte_arr = base64.b64encode(img_byte_arr.getvalue()).decode("utf-8")
+                plt.figure()
+                g = sns.FacetGrid(conc, col="category")
+                g.map(sns.boxplot, column, ko, order=levels)
+                g.savefig(path.join(output_dir, prefix + ".png"))
+                plt.close()
+                    
+                img = Image.open(path.join(output_dir, column+"_"+ko+".png"))
+                img_byte_arr = io.BytesIO()
+                img.save(img_byte_arr, format='PNG')
+                img_byte_arr = base64.b64encode(img_byte_arr.getvalue()).decode("utf-8")
 
-                    csv_path = os.path.join(output_dir, prefix + ".csv")
-                    
-                    output = pd.DataFrame(data.loc[:,[column, ko]]).groupby(column).mean()
-                    output.to_csv(csv_path)
+                csv_path = os.path.join(output_dir, prefix + ".csv")
+                                
+                output = pd.DataFrame(conc.loc[:,[column, ko, "category"]]).groupby("category").apply(lambda x: x.groupby(column).mean(ko))
+                output.to_csv(csv_path)
 
-                    output["ko"] = '<a href="'+ko_url+ko+'">'+ko+'</a>'
-                else:
-                    data["category"] = "ko1"             
-                    data2["category"] = "ko2"
-                    conc = pd.concat([data.loc[:, [column, ko,"category"]],
-                        data2.loc[:,[column, ko, "category"]]], axis=0)
-                    
-                    plt.figure()
-                    g = sns.FacetGrid(conc, col="category")
-                    g.map(sns.boxplot, column, ko, order=levels)
-                    g.savefig(path.join(output_dir, prefix + ".png"))
-                    plt.close()
-                    
-                    img = Image.open(path.join(output_dir, column+"_"+ko+".png"))
-                    img_byte_arr = io.BytesIO()
-                    img.save(img_byte_arr, format='PNG')
-                    img_byte_arr = base64.b64encode(img_byte_arr.getvalue()).decode("utf-8")
-
-                    csv_path = os.path.join(output_dir, prefix + ".csv")
-                    
-                    corr = ko_table.loc[all_samples, ko].corr(ko_table2.loc[all_samples, ko], method=method)
-                    
-                    output = pd.DataFrame(conc.loc[:,[column, ko, "category"]]).groupby("category").apply(lambda x: x.groupby(column).mean(ko))
-                    output["corr"] = corr
-                    output.to_csv(csv_path)
-
-                    output["ko"] = '<a href="'+ko_url+ko+'">'+ko+'</a>'
+                output["ko"] = '<a href="'+ko_url+ko+'">'+ko+'</a>'
             
                 ## Save the image
                 jsonp = prefix + ".jsonp"
@@ -199,6 +163,75 @@ def summarize(output_dir: str,
                     fh.write("');")
                 filenames.append(jsonp)
                 
+                ## Correlation output per KO
+                corrtbl = pd.concat([table.loc[all_samples, ko] for table in tables], axis=1)
+                corrtbl.columns = ["data"+str(e) for e, i in enumerate(tables)]
+                corr = corrtbl.corr(method=method)
+
+                plt.figure()
+                g = sns.heatmap(corr, annot=True)
+                fig = g.get_figure()
+                fig.savefig(path.join(output_dir, prefix + "_heatmap.png"))
+                plt.close()
+                
+                img = Image.open(path.join(output_dir, column+"_"+ko+"_heatmap.png"))
+                img_byte_arr = io.BytesIO()
+                img.save(img_byte_arr, format='PNG')
+                img_byte_arr = base64.b64encode(img_byte_arr.getvalue()).decode("utf-8")
+
+                csv_path = os.path.join(output_dir, prefix + "_corr.csv")                                
+                corr.to_csv(csv_path)
+            
+            
+                
+                ## Save the image
+                prefix = prefix + "_corr"
+                jsonp = prefix + ".jsonp"
+                with open(os.path.join(output_dir, jsonp), 'w') as fh:
+                    fh.write('load_data("%s",' % prefix)
+                    json.dump(img_byte_arr, fh)
+                    fh.write(",'")
+                    table = q2templates.df_to_html(corr, escape=False)
+                    fh.write(table.replace('\n', '').replace("'", "\\'"))
+                    fh.write("','")
+                    fh.write(quote(prefix+"_corr.csv"))
+                    fh.write("');")
+                filenames.append(jsonp)
+                
+                corr = corr.where(np.triu(np.ones(corr.shape)).astype(bool))
+                corr = corr.stack().reset_index()
+                corr.columns = ['d1','d2','value']
+                corrs.append(corr)
+        
+        all_cor = pd.concat(corrs)
+        corsum = all_cor.groupby("d1").apply(lambda x: x.groupby("d2").mean("value"))
+        csv_path = os.path.join(output_dir, "whole_corr.csv")                                
+        corsum.to_csv(csv_path)
+        
+        all_cor["label"] = all_cor.d1.map(str) + " - " + all_cor.d2
+        plt.figure()
+        g = sns.boxplot(all_cor, x="label", y="value")
+        fig = g.get_figure()
+        fig.savefig(path.join(output_dir, "whole_corr.png"))
+        plt.close()
+        
+        img = Image.open(path.join(output_dir, "whole_corr.png"))
+        img_byte_arr = io.BytesIO()
+        img.save(img_byte_arr, format='PNG')
+        img_byte_arr = base64.b64encode(img_byte_arr.getvalue()).decode("utf-8")
+
+        jsonp = "whole.jsonp"
+        with open(os.path.join(output_dir, jsonp), 'w') as fh:
+            fh.write('load_data("%s",' % "whole")
+            json.dump(img_byte_arr, fh)
+            fh.write(",'")
+            table = q2templates.df_to_html(corsum, escape=False)
+            fh.write(table.replace('\n', '').replace("'", "\\'"))
+            fh.write("','")
+            fh.write(quote("whole_corr.csv"))
+            fh.write("');")
+        filenames.append(jsonp)
+        
     index = os.path.join(TEMPLATES, 'index.html')
     q2templates.render(index, output_dir, context={
         'columns': [quote(fn) for fn in filenames]

@@ -1,6 +1,6 @@
 
 
-from qiime2.plugin import (Plugin, Str, Choices, Int, Bool, Range, Float, Citations, Metadata)
+from qiime2.plugin import (Plugin, Str, Choices, Int, Bool, Range, Float, Citations, Metadata, List)
 from q2_types.feature_table import FeatureTable, Frequency
 from q2_types.feature_data import FeatureData, Sequence
 import q2_pathway
@@ -40,8 +40,7 @@ plugin.visualizers.register_function(
 plugin.visualizers.register_function(
     function=q2_pathway.summarize,
     inputs={
-        'ko_table': FeatureTable[Frequency],
-        'ko_table2': FeatureTable[Frequency]
+        'tables': List[FeatureTable[Frequency]]
     },
     parameters={
         'metadata': Metadata,
