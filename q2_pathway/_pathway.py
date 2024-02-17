@@ -21,10 +21,11 @@ TEMPLATES = pkg_resources.resource_filename('q2_pathway', 'assets')
 
 
 def kegg(output_dir: str, ko_table: pd.DataFrame, metadata: qiime2.Metadata, pathway_id: str,
-    map_ko: bool = False, low_color: str = "blue", high_color: str = "red", tss: bool = False) -> None:
+    map_ko: bool = False, low_color: str = "blue", high_color: str = "red", tss: bool = False,
+    method: str = "t") -> None:
     
     if tss:
-        ko_table = ko_table.apply(lambda x: x/sum(x), axis=1)    	
+        ko_table = ko_table.apply(lambda x: x/sum(x), axis=1)       
     
     ## Filter columns
     metadata = metadata.filter_ids(ko_table.index)
@@ -66,13 +67,39 @@ def kegg(output_dir: str, ko_table: pd.DataFrame, metadata: qiime2.Metadata, pat
             prefix = column+"_"+level1+"_vs_"+level2
             prefixes.append(prefix)
 
-            ## T-stats
-            a = metadata_df_filt[metadata_df_filt[column] == level1].index.tolist()
-            b = metadata_df_filt[metadata_df_filt[column] == level2].index.tolist()
-            val = pd.Series(ko_table.columns.map(lambda x: scipy.stats.ttest_ind(ko_table.loc[a, x], ko_table.loc[b, x], equal_var=False).statistic))
-            val.index = ["ko:"+i for i in ko_table.columns]
-            valdic = val.to_dict()
-            valdics[prefix] = valdic
+            if method == "t":
+                ## T-stats
+                a = metadata_df_filt[metadata_df_filt[column] == level1].index.tolist()
+                b = metadata_df_filt[metadata_df_filt[column] == level2].index.tolist()
+                val = pd.Series(ko_table.columns.map(lambda x: scipy.stats.ttest_ind(ko_table.loc[a, x], ko_table.loc[b, x], equal_var=False).statistic))
+                val.index = ["ko:"+i for i in ko_table.columns]
+                valdic = val.to_dict()
+                valdics[prefix] = valdic
+            else:
+                ## ALDEx2
+                ## This will take time if you have many KOs across many metadata
+                metapath = path.join(TEMPLATES,"meta_aldex2.tsv")
+                kotablepath = path.join(TEMPLATES,"ko_table.tsv")
+                aldexpath = path.join(TEMPLATES,"aldex2_res_"+prefix+".tsv")
+                
+                ## Make two conditions
+                metadata_df_tmp = metadata_df_filt[(metadata_df_filt[column]==level1)|(metadata_df_filt[column]==level2)]
+                metadata_df_tmp.to_csv(metapath, sep="\t")
+                ko_table.to_csv(kotablepath, sep="\t")
+                cmd = ["Rscript", path.join(TEMPLATES, "perform_aldex2.R"), kotablepath,
+                    metapath, column, aldexpath]
+                try:
+                    res = subprocess.run(cmd, check=True)
+                except subprocess.CalledProcessError as e:
+                    raise ValueError("ALDEx2 cannot be performed")
+                res = pd.read_csv(aldexpath, sep="\t")
+                
+                ## Better to select by the users
+                val = res["effect"]
+                val.index = ["ko:"+i for i in val.index.values]
+                valdic = val.to_dict()
+                valdics[prefix] = valdic
+                
 
             nodes = pykegg.append_colors_continuous_values(nodes, valdic,
                     new_color_column=prefix, two_slope=False, node_name_column="name", delim=" ",

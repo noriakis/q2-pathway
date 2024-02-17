@@ -27,7 +27,8 @@ plugin.visualizers.register_function(
         'map_ko': Bool,
         'low_color': Str,
         'high_color': Str,
-        'tss': Bool
+        'tss': Bool,
+        'method': Str
     },
     name="Plot KEGG PATHWAY",
     description=("Plot the statistics of KO abundances between group on KEGG PATHWAY image.")
