@@ -21,7 +21,14 @@ plugin = Plugin(
 plugin.visualizers.register_function(
     function=q2_pathway.kegg,
     inputs={'ko_table': FeatureTable[Frequency]},
-    parameters={'metadata': Metadata, 'pathway_id': Str, 'map_ko': Bool, 'low_color': Str, 'high_color': Str},
+    parameters={
+        'metadata': Metadata,
+        'pathway_id': Str,
+        'map_ko': Bool,
+        'low_color': Str,
+        'high_color': Str,
+        'tss': Bool
+    },
     name="Plot KEGG PATHWAY",
     description=("Plot the statistics of KO abundances between group on KEGG PATHWAY image.")
 )
@@ -60,8 +67,14 @@ plugin.methods.register_function(
         'seq_table': FeatureTable[Frequency]
     },
     outputs=[('table', FeatureTable[Frequency])],
-    parameters={'threads': Int, 'reference_sequences': Str,
-    'cn_table': Str, 'cn_16s_table': Str, 'full': Bool, 'pct_id': Float},
+    parameters={
+        'threads': Int,
+        'reference_sequences': Str,
+        'cn_table': Str,
+        'cn_16s_table': Str,
+        'full': Bool,
+        'pct_id': Float
+    },
     name="Run Piphillin algorithm",
     description=("Run Piphillin algorithm")
 )

@@ -21,7 +21,10 @@ TEMPLATES = pkg_resources.resource_filename('q2_pathway', 'assets')
 
 
 def kegg(output_dir: str, ko_table: pd.DataFrame, metadata: qiime2.Metadata, pathway_id: str,
-    map_ko: bool = False, low_color: str = "blue", high_color: str = "red") -> None:
+    map_ko: bool = False, low_color: str = "blue", high_color: str = "red", tss: bool = False) -> None:
+    
+    if tss:
+        ko_table = ko_table.apply(lambda x: x/sum(x), axis=1)    	
     
     ## Filter columns
     metadata = metadata.filter_ids(ko_table.index)
