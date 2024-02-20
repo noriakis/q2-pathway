@@ -65,10 +65,10 @@ def kegg(output_dir: str, ko_table: pd.DataFrame, metadata: qiime2.Metadata, pat
             level1 = comb[0]
             level2 = comb[1]
             prefix = column+"_"+level1+"_vs_"+level2
-            prefixes.append(prefix)
 
             if method == "t":
                 ## T-stats
+                prefixes.append(prefix)
                 a = metadata_df_filt[metadata_df_filt[column] == level1].index.tolist()
                 b = metadata_df_filt[metadata_df_filt[column] == level2].index.tolist()
                 val = pd.Series(ko_table.columns.map(lambda x: scipy.stats.ttest_ind(ko_table.loc[a, x], ko_table.loc[b, x], equal_var=False).statistic))
@@ -78,6 +78,7 @@ def kegg(output_dir: str, ko_table: pd.DataFrame, metadata: qiime2.Metadata, pat
             else:
                 ## We should invert the levels when using effect
                 prefix = column+"_"+level2+"_vs_"+level1
+                prefixes.append(prefix)
                 ## ALDEx2
                 ## This will take time if you have many KOs across many metadata
                 metapath = path.join(TEMPLATES,"meta_aldex2.tsv")

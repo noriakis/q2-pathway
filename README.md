@@ -4,6 +4,13 @@ QIIME2 plugin for visualizing and analyzing pathway information based on gene ab
 
 ## Installation
 
+After activating the QIIME2 environment, ALDEx2 shuold be installed if you are to use the statistics from the package.
+
+```r
+install.packages("BiocManager")
+BiocManager::install("ALDEx2")
+```
+
 ```shell
 mamba install -c noriakisato q2-pathway
 ```
