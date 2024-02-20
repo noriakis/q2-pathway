@@ -14,7 +14,8 @@ setup(
         'qiime2.plugins': ['q2-pathway=q2_pathway.plugin_setup:plugin']
     },
     package_data={
-        'q2_pathway': ['citations.bib', 'assets/index.html', 'assets/dist/*', 'assets/perform_gsea.R']
+        'q2_pathway': ['citations.bib', 'assets/index.html', 'assets/dist/*', 'assets/*.R',
+        'assets/*.fasta.gz', 'assets/*.tsv.gz']
     },
     zip_safe=False,
 )
