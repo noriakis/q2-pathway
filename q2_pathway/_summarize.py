@@ -14,6 +14,7 @@ from PIL import Image
 from urllib.parse import quote
 import io
 import matplotlib.pyplot as plt
+from itertools import combinations
 import pkg_resources
 TEMPLATES = pkg_resources.resource_filename('q2_pathway', 'assets')
 ko_url = "https://www.genome.jp/dbget-bin/www_bget?"
@@ -23,9 +24,10 @@ def summarize(output_dir: str,
     tables: pd.DataFrame,
     metadata: qiime2.Metadata,
     first: int = 100,
+    candidate_pathway: str = None,
     candidate: str = None,
     tss: bool = False,
-    method: str = "pearson") -> None:
+    method: str = "spearman") -> None:
 
     tbl_len = len(tables)
 
@@ -62,6 +64,16 @@ def summarize(output_dir: str,
         all_cols = mean_val.head(first).index.values
     else:
         all_cols = [candidate]
+    
+    ## Override if pathway is specified        
+    if candidate_pathway is not None:
+        ## Download pathway info for GSEA and output
+        kop = pd.read_csv("https://rest.kegg.jp/link/ko/pathway", sep="\t", header=None)
+        kop = kop[kop[0].apply(lambda x: "path:ko" in x)]
+        kop[0] = kop[0].apply(lambda x: x.split(":")[1])
+        kop[1] = kop[1].apply(lambda x: x.split(":")[1])
+        all_cols = kop[kop[0].isin([candidate_pathway])][1].tolist()
+        all_cols = list(set(all_kos) & set(all_cols))
 
     ## Loose checking (tax1_K00001)
     if "_" in all_cols[0]:
@@ -84,6 +96,8 @@ def summarize(output_dir: str,
                 prefix = column+"_"+ko
 
                 candidate_columns = [i for i in all_cols if ko in i]
+                if len(candidate_columns) == 0:
+                    continue
                 candidate_columns.append(column)
                 output = data.loc[:, candidate_columns]
                 output["sample"] = output.index.values
@@ -94,6 +108,7 @@ def summarize(output_dir: str,
                 bp = sns.boxplot(data=output, x="variable", y="value")
                 fig = bp.get_figure()
                 fig.savefig(path.join(output_dir, prefix + ".png"))
+                plt.clf()
                 plt.close()
                     
                 img = Image.open(path.join(output_dir, column+"_"+ko+".png"))
@@ -135,13 +150,16 @@ def summarize(output_dir: str,
                 
             corrs = []
             for ko in all_kos:
-                prefix = column+"_"+ko            
+                prefix = column+"_"+ko
+                if ko not in concs[0].columns.values:
+                    continue
                 conc = pd.concat([data.loc[:, [column, ko,"category"]] for data in concs], axis=0)
                     
                 plt.figure()
                 g = sns.FacetGrid(conc, col="category")
                 g.map(sns.boxplot, column, ko, order=levels)
                 g.savefig(path.join(output_dir, prefix + ".png"))
+                plt.clf()
                 plt.close()
                     
                 img = Image.open(path.join(output_dir, column+"_"+ko+".png"))
@@ -169,15 +187,20 @@ def summarize(output_dir: str,
                     fh.write("');")
                 filenames.append(jsonp)
                 
-                ## Correlation output per KO
+                ## Correlation output per KO per dataset
+                
                 corrtbl = pd.concat([table.loc[all_samples, ko] for table in tables], axis=1)
                 corrtbl.columns = ["data"+str(e) for e, i in enumerate(tables)]
                 corr = corrtbl.corr(method=method)
+                base = list(combinations(corrtbl.columns.values, 2))
 
-                plt.figure()
-                g = sns.heatmap(corr, annot=True)
-                fig = g.get_figure()
-                fig.savefig(path.join(output_dir, prefix + "_heatmap.png"))
+                fig, ax =plt.subplots(1,1+len(base), figsize=(14, 4))
+                sns.heatmap(corr, annot=True, ax=ax[0])
+                for e, i in enumerate(base):                
+                    sns.scatterplot(corrtbl, x=i[0], y=i[1], ax=ax[e+1])
+                figs = fig.get_figure()
+                figs.savefig(path.join(output_dir, prefix + "_heatmap.png"))
+                plt.clf()
                 plt.close()
                 
                 img = Image.open(path.join(output_dir, column+"_"+ko+"_heatmap.png"))
@@ -219,6 +242,7 @@ def summarize(output_dir: str,
         g = sns.boxplot(all_cor, x="label", y="value")
         fig = g.get_figure()
         fig.savefig(path.join(output_dir, "whole_corr.png"))
+        plt.clf()
         plt.close()
         
         img = Image.open(path.join(output_dir, "whole_corr.png"))
