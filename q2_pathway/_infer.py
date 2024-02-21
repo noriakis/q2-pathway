@@ -14,7 +14,7 @@ def infer(sequences: pd.Series,
 	    seq_table: pd.DataFrame,
 	    reference_sequences: str = path.join(TEMPLATES, "16S_seqs.fasta.gz"),
         cn_table: str = path.join(TEMPLATES, "ko_copynum.tsv.gz"),
-        cn_16s_table: str = path.join(TEMPLATES, "16s_cn.tsv.gz"), 
+        cn_16s_table: str = path.join(TEMPLATES, "16S_cn.tsv.gz"), 
         threads: int = 1, full: bool = False,
         pct_id: float = 0.99) -> pd.DataFrame:
 
