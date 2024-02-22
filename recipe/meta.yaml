@@ -25,6 +25,7 @@ requirements:
     - q2-types
     - pykegg
     - bioconductor-fgsea
+    - r-piphir
     - numpy
     - scipy
     - pandas
