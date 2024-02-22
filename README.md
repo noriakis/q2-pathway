@@ -21,6 +21,14 @@ This plugin is used to analyze the functional analysis results from metagenomic 
 
 
 ```shell
+qiime pathway infer \
+    --i-sequences rep-seqs.qza \
+    --i-seq-table table-dada2.qza \
+    --o-table ko00240 \
+    --p-threads 0
+```
+
+```shell
 qiime pathway kegg \
     --i-ko-table ko_metagenome.qza \
     --m-metadata-file metadata.tsv \
