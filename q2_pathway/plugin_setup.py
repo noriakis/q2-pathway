@@ -21,6 +21,7 @@ plugin = Plugin(
 plugin.visualizers.register_function(
     function=q2_pathway.kegg,
     inputs={'ko_table': FeatureTable[Frequency]},
+    input_descriptions={'ko_table': 'table containing KO abundance per sample'},
     parameters={
         'metadata': Metadata,
         'pathway_id': Str,
