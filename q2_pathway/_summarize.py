@@ -121,7 +121,10 @@ def summarize(output_dir: str,
                 output = output.groupby(column).apply(lambda x: x.groupby("variable").mean("value"))
                 output.to_csv(csv_path)
 
-                output["ko"] = '<a href="'+ko_url+ko+'">'+ko+'</a>'
+                if ko.startswith("K"):
+                    output["ko"] = '<a href="'+ko_url+ko+'">'+ko+'</a>'
+                else:
+                    output["ko"] = ko
                 
                 ## Save the image
                 jsonp = prefix + ".jsonp"
@@ -172,7 +175,10 @@ def summarize(output_dir: str,
                 output = pd.DataFrame(conc.loc[:,[column, ko, "category"]]).groupby("category").apply(lambda x: x.groupby(column).mean(ko))
                 output.to_csv(csv_path)
 
-                output["ko"] = '<a href="'+ko_url+ko+'">'+ko+'</a>'
+                if ko.startswith("K"):
+                    output["ko"] = '<a href="'+ko_url+ko+'">'+ko+'</a>'
+                else:
+                    output["ko"] = ko
             
                 ## Save the image
                 jsonp = prefix + ".jsonp"
@@ -188,20 +194,31 @@ def summarize(output_dir: str,
                 filenames.append(jsonp)
                 
                 ## Correlation output per KO per dataset
-                
-                corrtbl = pd.concat([table.loc[all_samples, ko] for table in tables], axis=1)
-                corrtbl.columns = ["data"+str(e) for e, i in enumerate(tables)]
-                corr = corrtbl.corr(method=method)
-                base = list(combinations(corrtbl.columns.values, 2))
+                if tbl_len > 1:
+                    ## If multiple tables, append scatterplot
+                    corrtbl = pd.concat([table.loc[all_samples, ko] for table in tables], axis=1)
+                    corrtbl.columns = ["data"+str(e) for e, i in enumerate(tables)]
+                    corr = corrtbl.corr(method=method)
+                    base = list(combinations(corrtbl.columns.values, 2))
 
-                fig, ax =plt.subplots(1,1+len(base), figsize=(14, 4))
-                sns.heatmap(corr, annot=True, ax=ax[0])
-                for e, i in enumerate(base):                
-                    sns.scatterplot(corrtbl, x=i[0], y=i[1], ax=ax[e+1])
-                figs = fig.get_figure()
-                figs.savefig(path.join(output_dir, prefix + "_heatmap.png"))
-                plt.clf()
-                plt.close()
+                    fig, ax =plt.subplots(1,1+len(base), figsize=(14, 4))
+                    sns.heatmap(corr, annot=True, ax=ax[0])
+                    for e, i in enumerate(base):                
+                        sns.scatterplot(corrtbl, x=i[0], y=i[1], ax=ax[e+1])
+                    figs = fig.get_figure()
+                    figs.savefig(path.join(output_dir, prefix + "_heatmap.png"))
+                    plt.clf()
+                    plt.close()
+                else:
+                    corrtbl = pd.concat([table.loc[all_samples, ko] for table in tables], axis=1)
+                    corrtbl.columns = ["data"+str(e) for e, i in enumerate(tables)]
+                    corr = corrtbl.corr(method=method)
+                    plt.figure()
+                    fig = sns.heatmap(corr, annot=True)
+                    figs = fig.get_figure()
+                    figs.savefig(path.join(output_dir, prefix + "_heatmap.png"))
+                    plt.clf()
+                    plt.close()
                 
                 img = Image.open(path.join(output_dir, column+"_"+ko+"_heatmap.png"))
                 img_byte_arr = io.BytesIO()
