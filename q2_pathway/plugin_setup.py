@@ -54,6 +54,10 @@ plugin.visualizers.register_function(
         'tss': Bool,
         'method': Str
     },
+    parameter_descriptions={
+        'tss': 'total-sum scaling per sample before all the analysis',
+        'method': 'which value to show in the image'        
+    },
     name="Perform GSEA by the R package fgsea (experimental)",
     description=("Perform GSEA by the R package fgsea (experimental)")
 )
