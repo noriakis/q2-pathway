@@ -29,7 +29,13 @@ def summarize(output_dir: str,
     tss: bool = False,
     split_str: str = None,
     convert: str = None,
-    method: str = "spearman") -> None:
+    method: str = "spearman",
+    map_ko: bool = False) -> None:
+
+    if map_ko:
+        ## Obtain KO description
+        koname = pd.read_csv("https://rest.kegg.jp/list/ko", sep="\t", header=None, index_col=0)
+        kodic = koname[1].to_dict()
 
     ## Converting table should be tab-separated file
     ## with *no header*, and first column corresponds to sample-id and 
@@ -151,12 +157,18 @@ def summarize(output_dir: str,
                 csv_path = os.path.join(output_dir, prefix + ".csv")
                     
                 output = output.groupby(column).apply(lambda x: x.groupby("variable").mean("value"))
+                
+                if map_ko:
+                    if ko in kodic.keys():
+                        output["ko_description"] = kodic[ko]
+                
                 output.to_csv(csv_path)
 
                 if ko.startswith("K"):
                     output["ko"] = '<a href="'+ko_url+ko+'">'+ko+'</a>'
                 else:
                     output["ko"] = ko
+                    
                 
                 ## Save the image
                 jsonp = prefix + ".jsonp"
@@ -211,6 +223,10 @@ def summarize(output_dir: str,
                 csv_path = os.path.join(output_dir, prefix + ".csv")
                                 
                 output = pd.DataFrame(conc.loc[:,[column, ko, "category"]]).groupby("category").apply(lambda x: x.groupby(column).mean(ko))
+                if map_ko:
+                    if ko in kodic.keys():
+                        output["ko_description"] = kodic[ko]
+                
                 output.to_csv(csv_path)
 
                 if ko.startswith("K"):
@@ -286,14 +302,15 @@ def summarize(output_dir: str,
                 corr = corr.stack().reset_index()
                 corr.columns = ['d1','d2','value']
                 corrs.append(corr)
-        
+
+
+        ## Correlation summarization by boxplot for 
+        ## every dataset pairs
+                
         all_cor = pd.concat(corrs)
         corsum = all_cor.groupby("d1").apply(lambda x: x.groupby("d2").mean("value"))
         csv_path = os.path.join(output_dir, "whole_corr.csv")                                
         corsum.to_csv(csv_path)
-        
-        ## Correlation summarization by boxplot for 
-        ## dataset pairs
 
         all_cor["label"] = all_cor.d1.map(str) + " - " + all_cor.d2
         plt.figure(figsize=(12,6))

@@ -31,6 +31,14 @@ plugin.visualizers.register_function(
         'tss': Bool,
         'method': Str
     },
+    parameter_descriptions={
+        'pathway_id': 'pathway to visualize, should start with ko.',
+        'map_ko': 'insert the KO description on the output table',
+        'low_color': 'color for low value',
+        'high_color': 'color for high value',
+        'tss': 'total-sum scaling per sample before all the analysis',
+        'method': 'which value to show in the image'        
+    },
     name="Plot KEGG PATHWAY",
     description=("Plot the statistics of KO abundances between group on KEGG PATHWAY image.")
 )
@@ -40,7 +48,12 @@ plugin.visualizers.register_function(
 plugin.visualizers.register_function(
     function=q2_pathway.gsea,
     inputs={'ko_table': FeatureTable[Frequency]},
-    parameters={'metadata': Metadata, 'tss': Bool, 'method': Str},
+    input_descriptions={'ko_table': 'table containing KO abundance per sample'},
+    parameters={
+        'metadata': Metadata,
+        'tss': Bool,
+        'method': Str
+    },
     name="Perform GSEA by the R package fgsea (experimental)",
     description=("Perform GSEA by the R package fgsea (experimental)")
 )
@@ -59,7 +72,8 @@ plugin.visualizers.register_function(
         'candidate': Str,
         'candidate_pathway': Str,
         'split_str': Str,
-        'convert': Str
+        'convert': Str,
+        'map_ko': Bool
     },
     name="Summarize the output of functional prediction.",
     description=("Summarize the output of functional prediction.")
