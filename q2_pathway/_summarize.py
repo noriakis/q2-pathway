@@ -27,7 +27,19 @@ def summarize(output_dir: str,
     candidate_pathway: str = None,
     candidate: str = None,
     tss: bool = False,
+    split_str: str = None,
+    convert: str = None,
     method: str = "spearman") -> None:
+
+    ## Converting table should be tab-separated file
+    ## with *no header*, and first column corresponds to sample-id and 
+    ## second column converted ID.
+    ## So if shotgun profiled qza is to be read, first column corresponds to
+    ## shotgun-ID and second column corresponds to 16S-ID.
+
+    if convert is not None:
+        mapping = pd.read_csv(convert, sep="\t", header=None, index_col=0)
+        change = mapping[1].to_dict()
 
     tbl_len = len(tables)
 
@@ -42,14 +54,29 @@ def summarize(output_dir: str,
     kos = [ko_table.columns.values for ko_table in tables]
     all_kos = list(set.intersection(*map(set, kos)))
     samples = [ko_table.index.values for ko_table in tables]
+
+    if split_str is not None:
+        samples = [[i.split(quote(split_str))[0] for i in j] for j in samples]
+
+    if convert is not None:
+        samples = [[change[i] if i in change.keys() else i for i in j] for j in samples]
+
     all_samples = list(set.intersection(*map(set, samples)))
+
+    if len(all_samples) == 0:
+        raise ValueError("No common samples present across datasets")
+
+    if len(all_kos) == 0:
+        raise ValueError("No common genes present across datasets")
+
 
     ## Assuming unstratified output for ko_table
     ## Filter columns
     metadata = metadata.filter_ids(all_samples)
     metadata = metadata.filter_columns(column_type='categorical')
     metadata = metadata.filter_columns(
-        drop_all_unique=True, drop_zero_variance=True, drop_all_missing=True)
+        drop_all_unique=False, drop_zero_variance=False, drop_all_missing=True)
+
     filenames = []
 
     ## save out metadata for download in viz
@@ -60,14 +87,16 @@ def summarize(output_dir: str,
     
     if candidate is None:
         ## First table will be used for subset
+        ## By default, the genes are sorted based on mean abundance and `p-first` KOs 
+        ## are subset for summarization.
         mean_val = tables[0].loc[:, all_kos].apply(lambda x: np.nanmean(x), axis=0).sort_values(ascending=False)
         all_cols = mean_val.head(first).index.values
     else:
         all_cols = [candidate]
     
-    ## Override if pathway is specified        
+    ## Override `first` and `candidate` option if pathway is specified        
     if candidate_pathway is not None:
-        ## Download pathway info for GSEA and output
+        ## Download pathway info
         kop = pd.read_csv("https://rest.kegg.jp/link/ko/pathway", sep="\t", header=None)
         kop = kop[kop[0].apply(lambda x: "path:ko" in x)]
         kop[0] = kop[0].apply(lambda x: x.split(":")[1])
@@ -80,7 +109,10 @@ def summarize(output_dir: str,
         strat = True
         ko_table = tables[0]
         
-    ## As PICRUSt2 does not produce stratified table by default
+    ## As q2-picrust2 does not produce stratified table by default
+    ## What should be the format for ths stratified output?
+    ## Currently, the correlation will not be produced for the stratified output.
+
     if strat:
         all_taxs = list(set([i.split("_")[0] for i in all_cols]))
         all_kos = list(set([i.split("_")[1] for i in all_cols]))
@@ -147,6 +179,12 @@ def summarize(output_dir: str,
             levels = metadata_df_filt[column].unique()
             concs = []
             for e, table in enumerate(tables):
+                ## Rename sample id based on the parameter
+                if split_str is not None:
+                    table.index = [i.split(quote(split_str))[0] for i in table.index.values]
+                if convert is not None:
+                    table.index = [change[i] if i in change.keys() else i for i in table.index.values]
+
                 tmp = pd.concat([table, metadata_df_filt], axis=1, join='inner')
                 tmp["category"] = "data"+str(e)
                 concs.append(tmp)
@@ -156,7 +194,7 @@ def summarize(output_dir: str,
                 prefix = column+"_"+ko
                 if ko not in concs[0].columns.values:
                     continue
-                conc = pd.concat([data.loc[:, [column, ko,"category"]] for data in concs], axis=0)
+                conc = pd.concat([data.loc[:, [column, ko, "category"]] for data in concs], axis=0)
                     
                 plt.figure()
                 g = sns.FacetGrid(conc, col="category")
@@ -201,7 +239,7 @@ def summarize(output_dir: str,
                     corr = corrtbl.corr(method=method)
                     base = list(combinations(corrtbl.columns.values, 2))
 
-                    fig, ax =plt.subplots(1,1+len(base), figsize=(14, 4))
+                    fig, ax =plt.subplots(1,1+len(base), figsize=(16, 4))
                     sns.heatmap(corr, annot=True, ax=ax[0])
                     for e, i in enumerate(base):                
                         sns.scatterplot(corrtbl, x=i[0], y=i[1], ax=ax[e+1])
@@ -254,8 +292,11 @@ def summarize(output_dir: str,
         csv_path = os.path.join(output_dir, "whole_corr.csv")                                
         corsum.to_csv(csv_path)
         
+        ## Correlation summarization by boxplot for 
+        ## dataset pairs
+
         all_cor["label"] = all_cor.d1.map(str) + " - " + all_cor.d2
-        plt.figure()
+        plt.figure(figsize=(12,6))
         g = sns.boxplot(all_cor, x="label", y="value")
         fig = g.get_figure()
         fig.savefig(path.join(output_dir, "whole_corr.png"))

@@ -56,7 +56,9 @@ plugin.visualizers.register_function(
         'tss': Bool,
         'method': Str,
         'candidate': Str,
-        'candidate_pathway': Str
+        'candidate_pathway': Str,
+        'split_str': Str,
+        'convert': Str
     },
     name="Summarize the output of functional prediction.",
     description=("Summarize the output of functional prediction.")
