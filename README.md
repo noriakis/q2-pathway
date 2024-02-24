@@ -17,14 +17,20 @@ mamba install -c noriakisato q2-pathway
 
 ## q2-pathway
 
-This plugin is used to analyze the functional analysis results from metagenomic dataset. Currently, `kegg` module is implemented for visualization of KEGG PATHWAY images colored by the statistics calculated from comparing the categorical variables in the metadata. Also, `gsea` module is implemented for performing GSEA using `fgsea`, based on the KEGG PATHWAY mapping. The users should perform with `--verbose` for inspecting the GSEA output (like the existing of the ties). The `summarize` module reports and compares the KO abundance table between the tables produced by multiple inference method. Using [`q2-sapienns`](https://github.com/gregcaporaso/q2-sapienns), the results from the shotgun metagenomics data can also be compared (WIP). Althoug there is already a plugin (q2-aldex2), the function can rank the genes based on the statistics from ALDEx2. One should install ALDEx2 (`BiocManager::install("ALDEx2")`) beforehand.
+This plugin is used to analyze the functional analysis results from metagenomic dataset. Currently, `kegg` module is implemented for visualization of KEGG PATHWAY images colored by the statistics calculated from comparing the categorical variables in the metadata.
+
+Also, `gsea` module is implemented for performing GSEA using `fgsea`, based on the KEGG PATHWAY mapping. The users should perform with `--verbose` for inspecting the GSEA output (like the existing of the ties).
+
+The `summarize` module reports and compares the KO abundance table between the tables produced by multiple inference method. Using [`q2-sapienns`](https://github.com/gregcaporaso/q2-sapienns), the results from the shotgun metagenomics data can also be compared.
+
+Althoug there is already a plugin (`q2-aldex2`), the function can rank the genes based on the statistics from ALDEx2. One should install ALDEx2 (`BiocManager::install("ALDEx2")`) beforehand.
 
 
 ```shell
 qiime pathway infer \
     --i-sequences rep-seqs.qza \
     --i-seq-table table-dada2.qza \
-    --o-table ko00240 \
+    --o-table infer_piphillin.qza \
     --p-threads 0
 ```
 
