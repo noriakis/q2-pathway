@@ -322,7 +322,7 @@ def summarize(output_dir: str,
         ## every dataset pairs
                 
         all_cor = pd.concat(corrs)
-        corsum = all_cor.groupby("d1").apply(lambda x: x.groupby("d2").mean("value"))
+        corsum = all_cor.groupby("d1").apply(lambda x: x.groupby("d2").agg({'value': ['mean', 'median', 'min', 'max']}))
         csv_path = os.path.join(output_dir, "whole_corr.csv")                                
         corsum.to_csv(csv_path)
 
