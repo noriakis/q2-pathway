@@ -30,7 +30,9 @@ def summarize(output_dir: str,
     split_str: str = None,
     convert: str = None,
     method: str = "spearman",
+    tables_name: str = None,
     map_ko: bool = False) -> None:
+
 
     if map_ko:
         ## Obtain KO description
@@ -198,7 +200,11 @@ def summarize(output_dir: str,
                     table.index = [change[i] if i in change.keys() else i for i in table.index.values]
 
                 tmp = pd.concat([table, metadata_df_filt], axis=1, join='inner')
-                tmp["category"] = "data"+str(e)
+                if tables_name is not None:
+                    tmp["category"] = tables_name[e]
+                else:
+                    tmp["category"] = "data"+str(e)
+
                 concs.append(tmp)
                 
             corrs = []
@@ -251,7 +257,11 @@ def summarize(output_dir: str,
                 if tbl_len > 1:
                     ## If multiple tables, append scatterplot
                     corrtbl = pd.concat([table.loc[all_samples, ko] for table in tables], axis=1)
-                    corrtbl.columns = ["data"+str(e) for e, i in enumerate(tables)]
+                    if tables_name is not None:
+                        corrtbl.columns = tables_name
+                    else:
+                        corrtbl.columns = ["data"+str(e) for e, i in enumerate(tables)]
+
                     corr = corrtbl.corr(method=method)
                     base = list(combinations(corrtbl.columns.values, 2))
 
@@ -265,7 +275,11 @@ def summarize(output_dir: str,
                     plt.close(fig)
                 else:
                     corrtbl = pd.concat([table.loc[all_samples, ko] for table in tables], axis=1)
-                    corrtbl.columns = ["data"+str(e) for e, i in enumerate(tables)]
+                    if tables_name is not None:
+                        corrtbl.columns = tables_name
+                    else:
+                        corrtbl.columns = ["data"+str(e) for e, i in enumerate(tables)]
+
                     corr = corrtbl.corr(method=method)
                     plt.figure()
                     fig = sns.heatmap(corr, annot=True)
@@ -313,8 +327,10 @@ def summarize(output_dir: str,
         corsum.to_csv(csv_path)
 
         all_cor["label"] = all_cor.d1.map(str) + " - " + all_cor.d2
-        plt.figure(figsize=(12,6))
+        plt.figure(figsize=(12,10))
         g = sns.boxplot(all_cor, x="label", y="value")
+        plt.xticks(rotation=45)
+        plt.tight_layout()
         fig = g.get_figure()
         fig.savefig(path.join(output_dir, "whole_corr.png"))
         # plt.clf()

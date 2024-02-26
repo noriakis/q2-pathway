@@ -77,7 +77,8 @@ plugin.visualizers.register_function(
         'candidate_pathway': Str,
         'split_str': Str,
         'convert': Str,
-        'map_ko': Bool
+        'map_ko': Bool,
+        'tables_name': List[Str]
     },
     name="Summarize the output of functional prediction.",
     description=("Summarize the output of functional prediction.")
