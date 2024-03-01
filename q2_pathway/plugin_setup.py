@@ -57,12 +57,14 @@ plugin.visualizers.register_function(
         'tss': Bool,
         'method': Str,
         'mc_samples': Int,
+        'map_pathway': Bool,
         'module': Bool
     },
     parameter_descriptions={
         'tss': 'total-sum scaling per sample before all the analysis',
         'method': 'which value to show in the image',
         'mc_samples': 'parameter for ALDEx2::aldex',
+        'map_pathway': 'map pathway name',
         'module': 'If specified, perform GSEA based on module - KO relationship. default to False'   
     },
     name="Perform GSEA by the R package fgsea (experimental)",

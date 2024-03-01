@@ -220,9 +220,16 @@ def kegg(output_dir: str, ko_table: pd.DataFrame, metadata: qiime2.Metadata, pat
         os.path.join(TEMPLATES, 'dist'),
         os.path.join(output_dir, 'dist'))
 
+def trunc(x):
+    tmp = x.split("/")
+    if len(tmp)>=10:
+        truncstr = "/".join(tmp[0:10]) + str("/truncated")
+    else:
+        truncstr = "/".join(tmp)
+    return(truncstr)
 
 def gsea(output_dir: str, ko_table: pd.DataFrame, metadata: qiime2.Metadata, tss: bool = False,
-    method: str = "t", mc_samples: int = 128, module: bool = False):
+    method: str = "t", mc_samples: int = 128, module: bool = False, map_pathway: bool = False):
     
     if tss:
         ko_table = ko_table.apply(lambda x: x / sum(x), axis=1)
@@ -233,6 +240,15 @@ def gsea(output_dir: str, ko_table: pd.DataFrame, metadata: qiime2.Metadata, tss
     metadata = metadata.filter_columns(
         drop_all_unique=True, drop_zero_variance=True, drop_all_missing=True)
     filenames = []
+    
+    if map_pathway:
+        kon = pd.read_csv("https://rest.kegg.jp/list/pathway", sep="\t", header=None)
+        kon[0] = kon[0].apply(lambda x: x.replace("map","path:ko"))
+        kon.to_csv(os.path.join(output_dir, "pathway_names.tsv"), sep="\t", index=False, header=None)
+        konflag = 1
+    else:
+        konflag = 0
+        
     
     ## Download pathway (or module) info for GSEA and output
     if module:
@@ -320,7 +336,7 @@ def gsea(output_dir: str, ko_table: pd.DataFrame, metadata: qiime2.Metadata, tss
                 filenames.append(jsonp)
             
             ## Perform GSEA
-            cmd = ["Rscript", path.join(TEMPLATES, "perform_gsea.R"), output_dir, prefix]
+            cmd = ["Rscript", path.join(TEMPLATES, "perform_gsea.R"), output_dir, prefix, str(konflag)]
             try:
                 res = subprocess.run(cmd, check=True)
             except subprocess.CalledProcessError as e:
@@ -338,6 +354,7 @@ def gsea(output_dir: str, ko_table: pd.DataFrame, metadata: qiime2.Metadata, tss
             else:
                 gseares["pathway"] = gseares["pathway"].apply(lambda x: '<a href="https://www.kegg.jp/entry/pathway+'+x.split(":")[1]+'">'+x+'</a>')
             jsonp = prefix + ".jsonp"
+            gseares["leadingEdge"] = gseares["leadingEdge"].apply(lambda x: trunc(x))
             
             ## The same structure as kegg
             with open(os.path.join(output_dir, jsonp), 'w') as fh:

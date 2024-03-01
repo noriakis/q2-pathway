@@ -1,20 +1,28 @@
 library(fgsea)
 
-# pathway_name_url = "https://rest.kegg.jp/list/pathway"
-# pnm <- data.table::fread(pathway_name_url, header=FALSE)
-# pnm$V1 <- gsub("map", "ko", pnm$V1)
-# namec <- pnm$V2
-# names(namec) <- pnm$V1
-
 argv <- commandArgs(trailingOnly = TRUE)
 outputDir <- argv[1]
 pref <- argv[2]
+kon <- as.integer(argv[3])
 
 cat("Beginning GSEA by fgsea\n")
 cat(pref, "\n")
 
+
+
 ## Should be done in python
 pathmap <- read.table(paste0(outputDir, "/pathway_map.tsv"), sep="\t", header=FALSE)
+
+if (kon==1) {
+    change <- read.table(paste0(outputDir, "/pathway_names.tsv"), sep="\t", header=FALSE)
+    desc <- change[,2]
+    names(desc) <- change[,1]
+    pathmap$V1 <- desc[pathmap$V1]
+    
+    rev <- change[,1]
+    names(rev) <- change[,2]
+}
+
 paths <- unique(pathmap$V1)
 
 nl <- lapply(paths, function(p) {
@@ -38,7 +46,10 @@ ores <- data.frame(res)
 ## Changing list to char
 ores[[8]] <- unlist(lapply(ores[[8]], function(x) paste0(x, collapse="/")))
 ores <- ores[order(ores$padj), ]
-# ores[["pathway"]] <- namec[ores[[1]]]
+if (kon==1) {
+    ores[["description"]] <- ores[["pathway"]]
+    ores[["pathway"]] <- rev[ores[["pathway"]]]
+}
 
 write.table(ores, paste0(outputDir, "/gsea_res_", pref, ".tsv"), sep="\t")
 
@@ -49,6 +60,6 @@ topPathways <- c(topPathwaysUp, rev(topPathwaysDown))
 
 ## output image
 png(paste0(outputDir, "/gsea_res_", pref, ".png"),
-	width=8, height=8, res=96, units="in")
+	width=14, height=8, res=96, units="in")
 plotGseaTable(nl[topPathways], vals, res, gseaParam=0.5)
 dev.off()
