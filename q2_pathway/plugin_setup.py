@@ -14,7 +14,8 @@ plugin = Plugin(
     package='q2_pathway',
     description=('QIIME2 plugin for visualizing and analyzing pathway information based on gene abundances.'),
     short_description='Visualize KEGG PATHWAY.',
-    citations=[citations['Sato2023Bioinformatics'], citations['Kanehisa2000NAR'], citations["Narayan2020BMCGenomics"]]
+    citations=[citations['Sato2023Bioinformatics'], citations['Kanehisa2000NAR'], citations["Narayan2020BMCGenomics"],
+               citations['Fernandes2013PLOSOne']]
 )
 
 ## kegg
@@ -29,7 +30,8 @@ plugin.visualizers.register_function(
         'low_color': Str,
         'high_color': Str,
         'tss': Bool,
-        'method': Str
+        'method': Str,
+        'mc_samples': Int
     },
     parameter_descriptions={
         'pathway_id': 'pathway to visualize, should start with ko.',
@@ -37,7 +39,8 @@ plugin.visualizers.register_function(
         'low_color': 'color for low value',
         'high_color': 'color for high value',
         'tss': 'total-sum scaling per sample before all the analysis',
-        'method': 'which value to show in the image'        
+        'method': 'which value to show in the image',
+        'mc_samples': 'parameter for ALDEx2::aldex'    
     },
     name="Plot KEGG PATHWAY",
     description=("Plot the statistics of KO abundances between group on KEGG PATHWAY image.")
@@ -52,11 +55,15 @@ plugin.visualizers.register_function(
     parameters={
         'metadata': Metadata,
         'tss': Bool,
-        'method': Str
+        'method': Str,
+        'mc_samples': Int,
+        'module': Bool
     },
     parameter_descriptions={
         'tss': 'total-sum scaling per sample before all the analysis',
-        'method': 'which value to show in the image'        
+        'method': 'which value to show in the image',
+        'mc_samples': 'parameter for ALDEx2::aldex',
+        'module': 'If specified, perform GSEA based on module - KO relationship. default to False'   
     },
     name="Perform GSEA by the R package fgsea (experimental)",
     description=("Perform GSEA by the R package fgsea (experimental)")
@@ -86,7 +93,7 @@ plugin.visualizers.register_function(
         'tss': 'total-sum scaling per sample before all the analysis',
         'first': 'If candidate or candidate_pathway is not specified, The `first` genes sorted by average abundance will be summarized.',
         'method': 'correlation method, default to spearman',
-        'candidate': 'candidate KO'
+        'candidate': 'candidate KO',
         'candidate_pathway': 'candidate pathway ID in KEGG PATHWAY',
         'split_str': 'split the string of column names and takes the first argument, e.g. if XXX_1234 and "_" is specified, the column will be converted to XXX',
         'convert': 'Converting table (first column the original sample ID and second column the converted ID)',

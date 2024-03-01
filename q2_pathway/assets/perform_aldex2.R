@@ -12,6 +12,7 @@ meta <- argv[2]
 condition <- argv[3]
 outPath <- argv[4]
 outImagePath <- argv[5]
+mcSamples <- as.integer(argv[6])
 
 abund <- read.table(abundance, sep="\t", row.names=1, header=1)
 meta <- read.table(meta, sep="\t", row.names=1, header=1)
@@ -26,7 +27,7 @@ colnames(meta) <- condition
 
 ## Controlling of the other parameters
 
-res <- aldex(abund[,inc_samples], as.character(meta[[condition]]))
+res <- aldex(abund[,inc_samples], as.character(meta[[condition]]), mcSamples)
 x <- as.data.frame(res)
 write.table(x, file=outPath, sep="\t", quote=FALSE)
 

@@ -22,7 +22,7 @@ TEMPLATES = pkg_resources.resource_filename('q2_pathway', 'assets')
 
 def kegg(output_dir: str, ko_table: pd.DataFrame, metadata: qiime2.Metadata, pathway_id: str,
     map_ko: bool = False, low_color: str = "blue", high_color: str = "red", tss: bool = False,
-    method: str = "t") -> None:
+    method: str = "t", mc_samples: int = 128) -> None:
     
     if tss:
         ko_table = ko_table.apply(lambda x: x/sum(x), axis=1)       
@@ -91,7 +91,7 @@ def kegg(output_dir: str, ko_table: pd.DataFrame, metadata: qiime2.Metadata, pat
                 metadata_df_tmp.to_csv(metapath, sep="\t")
                 ko_table.to_csv(kotablepath, sep="\t")
                 cmd = ["Rscript", path.join(TEMPLATES, "perform_aldex2.R"), kotablepath,
-                    metapath, column, aldexpath, aldeximagepath]
+                    metapath, column, aldexpath, aldeximagepath, str(mc_samples)]
                 try:
                     res = subprocess.run(cmd, check=True)
                 except subprocess.CalledProcessError as e:
@@ -222,10 +222,10 @@ def kegg(output_dir: str, ko_table: pd.DataFrame, metadata: qiime2.Metadata, pat
 
 
 def gsea(output_dir: str, ko_table: pd.DataFrame, metadata: qiime2.Metadata, tss: bool = False,
-    method: str = "t"):
+    method: str = "t", mc_samples: int = 128, module: bool = False):
     
     if tss:
-        ko_table = ko_table.apply(lambda x: x/sum(x), axis=1)
+        ko_table = ko_table.apply(lambda x: x / sum(x), axis=1)
 
     ## Filter columns
     metadata = metadata.filter_ids(ko_table.index)
@@ -234,10 +234,14 @@ def gsea(output_dir: str, ko_table: pd.DataFrame, metadata: qiime2.Metadata, tss
         drop_all_unique=True, drop_zero_variance=True, drop_all_missing=True)
     filenames = []
     
-    ## Download pathway info for GSEA and output
-    kop = pd.read_csv("https://rest.kegg.jp/link/ko/pathway", sep="\t", header=None)
-    kop = kop[kop[0].apply(lambda x: "path:ko" in x)]
-    kop.to_csv(os.path.join(output_dir, "pathway_map.tsv"), sep="\t", index=False, header=None)
+    ## Download pathway (or module) info for GSEA and output
+    if module:
+        kop = pd.read_csv("https://rest.kegg.jp/link/ko/module", sep="\t", header=None)
+        kop.to_csv(os.path.join(output_dir, "pathway_map.tsv"), sep="\t", index=False, header=None)
+    else:
+        kop = pd.read_csv("https://rest.kegg.jp/link/ko/pathway", sep="\t", header=None)
+        kop = kop[kop[0].apply(lambda x: "path:ko" in x)]
+        kop.to_csv(os.path.join(output_dir, "pathway_map.tsv"), sep="\t", index=False, header=None)
     
     ## save out metadata for download in viz
     metadata.save(os.path.join(output_dir, 'metadata.tsv'))
@@ -283,7 +287,7 @@ def gsea(output_dir: str, ko_table: pd.DataFrame, metadata: qiime2.Metadata, tss
                 metadata_df_tmp.to_csv(metapath, sep="\t")
                 ko_table.to_csv(kotablepath, sep="\t")
                 cmd = ["Rscript", path.join(TEMPLATES, "perform_aldex2.R"), kotablepath,
-                    metapath, column, aldexpath, aldeximagepath]
+                    metapath, column, aldexpath, aldeximagepath, str(mc_samples)]
                 try:
                     res = subprocess.run(cmd, check=True)
                 except subprocess.CalledProcessError as e:
@@ -329,7 +333,10 @@ def gsea(output_dir: str, ko_table: pd.DataFrame, metadata: qiime2.Metadata, tss
             img_byte_arr = base64.b64encode(img_byte_arr.getvalue()).decode("utf-8")
             
             gseares = pd.read_csv(path.join(output_dir, "gsea_res_"+prefix+".tsv"), sep="\t", index_col=0, header=0)
-            gseares["pathway"] = gseares["pathway"].apply(lambda x: '<a href="https://www.kegg.jp/entry/pathway+'+x.split(":")[1]+'">'+x+'</a>')
+            if module:
+                gseares["pathway"] = gseares["pathway"].apply(lambda x: '<a href="https://www.kegg.jp/entry/module+'+x.split(":")[1]+'">'+x+'</a>')
+            else:
+                gseares["pathway"] = gseares["pathway"].apply(lambda x: '<a href="https://www.kegg.jp/entry/pathway+'+x.split(":")[1]+'">'+x+'</a>')
             jsonp = prefix + ".jsonp"
             
             ## The same structure as kegg
