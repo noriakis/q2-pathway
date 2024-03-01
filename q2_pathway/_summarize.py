@@ -31,6 +31,7 @@ def summarize(output_dir: str,
     convert: str = None,
     method: str = "spearman",
     tables_name: str = None,
+    cor_fig_width: int = 12,
     map_ko: bool = False) -> None:
 
 
@@ -265,10 +266,12 @@ def summarize(output_dir: str,
                     corr = corrtbl.corr(method=method)
                     base = list(combinations(corrtbl.columns.values, 2))
 
-                    fig, ax =plt.subplots(1,1+len(base), figsize=(16, 4))
+                    fig, ax =plt.subplots(1,1+len(base), figsize=(cor_fig_width, 4))
                     sns.heatmap(corr, annot=True, ax=ax[0])
                     for e, i in enumerate(base):                
                         sns.scatterplot(corrtbl, x=i[0], y=i[1], ax=ax[e+1])
+                    plt.tight_layout()
+
                     figs = fig.get_figure()
                     figs.savefig(path.join(output_dir, prefix + "_heatmap.png"))
                     # plt.clf()
@@ -324,7 +327,7 @@ def summarize(output_dir: str,
         all_cor = pd.concat(corrs)
         corsum = all_cor.groupby("d1").apply(lambda x: x.groupby("d2").agg({'value': ['mean', 'median', 'min', 'max']}))
         csv_path = os.path.join(output_dir, "whole_corr.csv")                                
-        corsum.to_csv(csv_path)
+        all_cor.to_csv(csv_path)
 
         all_cor["label"] = all_cor.d1.map(str) + " - " + all_cor.d2
         plt.figure(figsize=(12,10))

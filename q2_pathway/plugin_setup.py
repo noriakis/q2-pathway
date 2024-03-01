@@ -68,6 +68,7 @@ plugin.visualizers.register_function(
     inputs={
         'tables': List[FeatureTable[Frequency]]
     },
+    input_descriptions={'tables': 'list of tables containing KO abundance per sample'},
     parameters={
         'metadata': Metadata,
         'first': Int,
@@ -78,7 +79,20 @@ plugin.visualizers.register_function(
         'split_str': Str,
         'convert': Str,
         'map_ko': Bool,
+        'cor_fig_width': Int,
         'tables_name': List[Str]
+    },
+    parameter_descriptions={
+        'tss': 'total-sum scaling per sample before all the analysis',
+        'first': 'If candidate or candidate_pathway is not specified, The `first` genes sorted by average abundance will be summarized.',
+        'method': 'correlation method, default to spearman',
+        'candidate': 'candidate KO'
+        'candidate_pathway': 'candidate pathway ID in KEGG PATHWAY',
+        'split_str': 'split the string of column names and takes the first argument, e.g. if XXX_1234 and "_" is specified, the column will be converted to XXX',
+        'convert': 'Converting table (first column the original sample ID and second column the converted ID)',
+        'map_ko': 'Insert the KO description in the output',
+        'cor_fig_width': 'Correlation figure width',
+        'tables_name': 'table name for the output, must be the same length as the specified table list'
     },
     name="Summarize the output of functional prediction.",
     description=("Summarize the output of functional prediction.")
@@ -92,6 +106,10 @@ plugin.methods.register_function(
         'sequences': FeatureData[Sequence],
         'seq_table': FeatureTable[Frequency]
     },
+    input_descriptions={
+        'sequences': 'representative sequences to be profiled',
+        'seq_table': 'sequence count table'
+    },
     outputs=[('table', FeatureTable[Frequency])],
     parameters={
         'threads': Int,
@@ -100,6 +118,14 @@ plugin.methods.register_function(
         'cn_16s_table': Str,
         'full': Bool,
         'pct_id': Float
+    },
+    parameter_descriptions={
+        'threads': 'The number of threads',
+        'reference_sequences': '16S reference sequences, default to the preset database.',
+        'cn_table': 'gene copy number table, default to the preset database.',
+        'cn_16s_table': '16S gene copy number table, default to the preset database.',
+        'full': 'Output the full stratified table',
+        'pct_id': 'Percent of identity, default to 0.99'
     },
     name="Run Piphillin algorithm",
     description=("Run Piphillin algorithm")
