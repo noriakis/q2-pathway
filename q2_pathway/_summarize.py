@@ -13,6 +13,7 @@ import seaborn as sns
 from PIL import Image
 from urllib.parse import quote
 import io
+import scipy
 import matplotlib.pyplot as plt
 from itertools import combinations
 import pkg_resources
@@ -29,6 +30,7 @@ def summarize(output_dir: str,
     tss: bool = False,
     split_str: str = None,
     convert: str = None,
+    use_p: bool = False,
     method: str = "spearman",
     tables_name: str = None,
     cor_fig_width: int = 12,
@@ -199,162 +201,220 @@ def summarize(output_dir: str,
                     table.index = [i.split(quote(split_str))[0] for i in table.index.values]
                 if convert is not None:
                     table.index = [change[i] if i in change.keys() else i for i in table.index.values]
-
-                tmp = pd.concat([table, metadata_df_filt], axis=1, join='inner')
-                if tables_name is not None:
-                    tmp["category"] = tables_name[e]
-                else:
-                    tmp["category"] = "data"+str(e)
-
-                concs.append(tmp)
-                
-            corrs = []
-            for ko in all_kos:
-                prefix = column+"_"+ko
-                if ko not in concs[0].columns.values:
-                    continue
-                conc = pd.concat([data.loc[:, [column, ko, "category"]] for data in concs], axis=0)
-                    
-                # plt.figure()
-                g = sns.FacetGrid(conc, col="category")
-                g.map(sns.boxplot, column, ko, order=levels)
-                g.savefig(path.join(output_dir, prefix + ".png"))
-                # plt.clf()
-                plt.close(g.fig)
-                    
-                img = Image.open(path.join(output_dir, column+"_"+ko+".png"))
-                img_byte_arr = io.BytesIO()
-                img.save(img_byte_arr, format='PNG')
-                img_byte_arr = base64.b64encode(img_byte_arr.getvalue()).decode("utf-8")
-
-                csv_path = os.path.join(output_dir, prefix + ".csv")
-                                
-                output = pd.DataFrame(conc.loc[:,[column, ko, "category"]]).groupby("category").apply(lambda x: x.groupby(column).mean(ko))
-                if map_ko:
-                    if ko in kodic.keys():
-                        output["ko_description"] = kodic[ko]
-                
-                output.to_csv(csv_path)
-
-                if ko.startswith("K"):
-                    output["ko"] = '<a href="'+ko_url+ko+'">'+ko+'</a>'
-                else:
-                    output["ko"] = ko
-            
-                ## Save the image
-                jsonp = prefix + ".jsonp"
-                with open(os.path.join(output_dir, jsonp), 'w') as fh:
-                    fh.write('load_data("%s",' % prefix)
-                    json.dump(img_byte_arr, fh)
-                    fh.write(",'")
-                    table = q2templates.df_to_html(output, escape=False)
-                    fh.write(table.replace('\n', '').replace("'", "\\'"))
-                    fh.write("','")
-                    fh.write(quote(prefix+".csv"))
-                    fh.write("');")
-                filenames.append(jsonp)
-                
-                ## Correlation output per KO per dataset
-                if tbl_len > 1:
-                    ## If multiple tables, append scatterplot
-                    corrtbl = pd.concat([table.loc[all_samples, ko] for table in tables], axis=1)
+                if not use_p:
+                    tmp = pd.concat([table, metadata_df_filt], axis=1, join='inner')
                     if tables_name is not None:
-                        corrtbl.columns = tables_name
+                        tmp["category"] = tables_name[e]
                     else:
-                        corrtbl.columns = ["data"+str(e) for e, i in enumerate(tables)]
+                        tmp["category"] = "data"+str(e)
 
-                    corr = corrtbl.corr(method=method)
-                    base = list(combinations(corrtbl.columns.values, 2))
-
-                    fig, ax =plt.subplots(1,1+len(base), figsize=(cor_fig_width, 4))
-                    sns.heatmap(corr, annot=True, ax=ax[0])
-                    for e, i in enumerate(base):                
-                        sns.scatterplot(corrtbl, x=i[0], y=i[1], ax=ax[e+1])
-                    plt.tight_layout()
-
-                    figs = fig.get_figure()
-                    figs.savefig(path.join(output_dir, prefix + "_heatmap.png"))
-                    # plt.clf()
-                    plt.close(fig)
+                    concs.append(tmp)
                 else:
-                    corrtbl = pd.concat([table.loc[all_samples, ko] for table in tables], axis=1)
-                    if tables_name is not None:
-                        corrtbl.columns = tables_name
-                    else:
-                        corrtbl.columns = ["data"+str(e) for e, i in enumerate(tables)]
+                    ## We only need KO counts
+                    concs.append(table)
 
-                    corr = corrtbl.corr(method=method)
+            ## If Wilcoxon-based correlation, we ignore the 
+            ## candidate, candidate_pathway, and first option
+            if use_p:
+                base = list(combinations(levels, 2))
+                for pair in base:
+                    level1 = pair[0]
+                    level2 = pair[1]
+                    prefix = level1 + " - " + level2
+                    a = metadata_df_filt[metadata_df_filt[column] == level1].index.tolist()
+                    b = metadata_df_filt[metadata_df_filt[column] == level2].index.tolist()
+                    vals = []
+                    for tbl in concs:
+                        val = pd.Series(tbl.columns.map(
+                            lambda x: scipy.stats.mannwhitneyu(tbl.loc[a, x], tbl.loc[b, x]).pvalue
+                        ))
+                        val.index = tbl.columns
+                        vals.append(val)
+                    kos = [val.index.values for val in vals]
+                    all_kos = list(set.intersection(*map(set, kos)))
+                    df = pd.DataFrame([val.loc[all_kos] for val in vals]).T
+                    if tables_name is not None:
+                        df.columns = tables_name
+                    else:
+                        df.columns = ["data"+str(e) for e, i in enumerate(tables)]
+                    corr = df.corr()
+
                     plt.figure()
                     fig = sns.heatmap(corr, annot=True)
                     figs = fig.get_figure()
                     figs.savefig(path.join(output_dir, prefix + "_heatmap.png"))
+                    plt.close()
+                    
+                    img = Image.open(path.join(output_dir, prefix+"_heatmap.png"))
+                    img_byte_arr = io.BytesIO()
+                    img.save(img_byte_arr, format='PNG')
+                    img_byte_arr = base64.b64encode(img_byte_arr.getvalue()).decode("utf-8")
+
+                    csv_path = os.path.join(output_dir, prefix + "_corr.csv")                                
+                    corr.to_csv(csv_path)
+
+                    prefix = prefix + "_corr"
+                    jsonp = prefix + ".jsonp"
+                    with open(os.path.join(output_dir, jsonp), 'w') as fh:
+                        fh.write('load_data("%s",' % prefix)
+                        json.dump(img_byte_arr, fh)
+                        fh.write(",'")
+                        table = q2templates.df_to_html(corr, escape=False)
+                        fh.write(table.replace('\n', '').replace("'", "\\'"))
+                        fh.write("','")
+                        fh.write(quote(prefix+"_corr.csv"))
+                        fh.write("');")
+                    filenames.append(jsonp)
+
+            else: ## End of summarize for using the p-values
+                corrs = []
+                for ko in all_kos:
+                    prefix = column+"_"+ko
+                    if ko not in concs[0].columns.values:
+                        continue
+                    conc = pd.concat([data.loc[:, [column, ko, "category"]] for data in concs], axis=0)
+                        
+                    # plt.figure()
+                    g = sns.FacetGrid(conc, col="category")
+                    g.map(sns.boxplot, column, ko, order=levels)
+                    g.savefig(path.join(output_dir, prefix + ".png"))
                     # plt.clf()
-                    plt.close(fig.fig)
+                    plt.close(g.fig)
+                        
+                    img = Image.open(path.join(output_dir, column+"_"+ko+".png"))
+                    img_byte_arr = io.BytesIO()
+                    img.save(img_byte_arr, format='PNG')
+                    img_byte_arr = base64.b64encode(img_byte_arr.getvalue()).decode("utf-8")
+
+                    csv_path = os.path.join(output_dir, prefix + ".csv")
+                                    
+                    output = pd.DataFrame(conc.loc[:,[column, ko, "category"]]).groupby("category").apply(lambda x: x.groupby(column).mean(ko))
+                    if map_ko:
+                        if ko in kodic.keys():
+                            output["ko_description"] = kodic[ko]
+                    
+                    output.to_csv(csv_path)
+
+                    if ko.startswith("K"):
+                        output["ko"] = '<a href="'+ko_url+ko+'">'+ko+'</a>'
+                    else:
+                        output["ko"] = ko
                 
-                img = Image.open(path.join(output_dir, column+"_"+ko+"_heatmap.png"))
+                    ## Save the image
+                    jsonp = prefix + ".jsonp"
+                    with open(os.path.join(output_dir, jsonp), 'w') as fh:
+                        fh.write('load_data("%s",' % prefix)
+                        json.dump(img_byte_arr, fh)
+                        fh.write(",'")
+                        table = q2templates.df_to_html(output, escape=False)
+                        fh.write(table.replace('\n', '').replace("'", "\\'"))
+                        fh.write("','")
+                        fh.write(quote(prefix+".csv"))
+                        fh.write("');")
+                    filenames.append(jsonp)
+                    
+                    ## Correlation output per KO per dataset
+                    if tbl_len > 1:
+                        ## If multiple tables, append scatterplot
+                        corrtbl = pd.concat([table.loc[all_samples, ko] for table in tables], axis=1)
+                        if tables_name is not None:
+                            corrtbl.columns = tables_name
+                        else:
+                            corrtbl.columns = ["data"+str(e) for e, i in enumerate(tables)]
+
+                        corr = corrtbl.corr(method=method)
+                        base = list(combinations(corrtbl.columns.values, 2))
+
+                        fig, ax =plt.subplots(1,1+len(base), figsize=(cor_fig_width, 4))
+                        sns.heatmap(corr, annot=True, ax=ax[0])
+                        for e, i in enumerate(base):                
+                            sns.scatterplot(corrtbl, x=i[0], y=i[1], ax=ax[e+1])
+                        plt.tight_layout()
+
+                        figs = fig.get_figure()
+                        figs.savefig(path.join(output_dir, prefix + "_heatmap.png"))
+                        # plt.clf()
+                        plt.close(fig)
+                    else:
+                        corrtbl = pd.concat([table.loc[all_samples, ko] for table in tables], axis=1)
+                        if tables_name is not None:
+                            corrtbl.columns = tables_name
+                        else:
+                            corrtbl.columns = ["data"+str(e) for e, i in enumerate(tables)]
+
+                        corr = corrtbl.corr(method=method)
+                        plt.figure()
+                        fig = sns.heatmap(corr, annot=True)
+                        figs = fig.get_figure()
+                        figs.savefig(path.join(output_dir, prefix + "_heatmap.png"))
+                        # plt.clf()
+                        plt.close(fig.fig)
+                    
+                    img = Image.open(path.join(output_dir, column+"_"+ko+"_heatmap.png"))
+                    img_byte_arr = io.BytesIO()
+                    img.save(img_byte_arr, format='PNG')
+                    img_byte_arr = base64.b64encode(img_byte_arr.getvalue()).decode("utf-8")
+
+                    csv_path = os.path.join(output_dir, prefix + "_corr.csv")                                
+                    corr.to_csv(csv_path)
+                
+                
+                    
+                    ## Save the image
+                    prefix = prefix + "_corr"
+                    jsonp = prefix + ".jsonp"
+                    with open(os.path.join(output_dir, jsonp), 'w') as fh:
+                        fh.write('load_data("%s",' % prefix)
+                        json.dump(img_byte_arr, fh)
+                        fh.write(",'")
+                        table = q2templates.df_to_html(corr, escape=False)
+                        fh.write(table.replace('\n', '').replace("'", "\\'"))
+                        fh.write("','")
+                        fh.write(quote(prefix+"_corr.csv"))
+                        fh.write("');")
+                    filenames.append(jsonp)
+                    
+                    corr = corr.where(np.triu(np.ones(corr.shape)).astype(bool))
+                    corr = corr.stack().reset_index()
+                    corr.columns = ['d1','d2','value']
+                    corrs.append(corr)
+
+
+                ## Correlation summarization by boxplot for 
+                ## every dataset pairs
+                        
+                all_cor = pd.concat(corrs)
+                corsum = all_cor.groupby("d1").apply(lambda x: x.groupby("d2").agg({'value': ['mean', 'median', 'min', 'max']}))
+                csv_path = os.path.join(output_dir, "whole_corr.csv")                                
+                all_cor.to_csv(csv_path)
+
+                all_cor["label"] = all_cor.d1.map(str) + " - " + all_cor.d2
+                plt.figure(figsize=(12,10))
+                g = sns.boxplot(all_cor, x="label", y="value")
+                plt.xticks(rotation=45)
+                plt.tight_layout()
+                fig = g.get_figure()
+                fig.savefig(path.join(output_dir, "whole_corr.png"))
+                # plt.clf()
+                plt.close()
+                
+                img = Image.open(path.join(output_dir, "whole_corr.png"))
                 img_byte_arr = io.BytesIO()
                 img.save(img_byte_arr, format='PNG')
                 img_byte_arr = base64.b64encode(img_byte_arr.getvalue()).decode("utf-8")
 
-                csv_path = os.path.join(output_dir, prefix + "_corr.csv")                                
-                corr.to_csv(csv_path)
-            
-            
-                
-                ## Save the image
-                prefix = prefix + "_corr"
-                jsonp = prefix + ".jsonp"
+                jsonp = "whole.jsonp"
                 with open(os.path.join(output_dir, jsonp), 'w') as fh:
-                    fh.write('load_data("%s",' % prefix)
+                    fh.write('load_data("%s",' % "whole")
                     json.dump(img_byte_arr, fh)
                     fh.write(",'")
-                    table = q2templates.df_to_html(corr, escape=False)
+                    table = q2templates.df_to_html(corsum, escape=False)
                     fh.write(table.replace('\n', '').replace("'", "\\'"))
                     fh.write("','")
-                    fh.write(quote(prefix+"_corr.csv"))
+                    fh.write(quote("whole_corr.csv"))
                     fh.write("');")
                 filenames.append(jsonp)
-                
-                corr = corr.where(np.triu(np.ones(corr.shape)).astype(bool))
-                corr = corr.stack().reset_index()
-                corr.columns = ['d1','d2','value']
-                corrs.append(corr)
-
-
-        ## Correlation summarization by boxplot for 
-        ## every dataset pairs
-                
-        all_cor = pd.concat(corrs)
-        corsum = all_cor.groupby("d1").apply(lambda x: x.groupby("d2").agg({'value': ['mean', 'median', 'min', 'max']}))
-        csv_path = os.path.join(output_dir, "whole_corr.csv")                                
-        all_cor.to_csv(csv_path)
-
-        all_cor["label"] = all_cor.d1.map(str) + " - " + all_cor.d2
-        plt.figure(figsize=(12,10))
-        g = sns.boxplot(all_cor, x="label", y="value")
-        plt.xticks(rotation=45)
-        plt.tight_layout()
-        fig = g.get_figure()
-        fig.savefig(path.join(output_dir, "whole_corr.png"))
-        # plt.clf()
-        plt.close()
-        
-        img = Image.open(path.join(output_dir, "whole_corr.png"))
-        img_byte_arr = io.BytesIO()
-        img.save(img_byte_arr, format='PNG')
-        img_byte_arr = base64.b64encode(img_byte_arr.getvalue()).decode("utf-8")
-
-        jsonp = "whole.jsonp"
-        with open(os.path.join(output_dir, jsonp), 'w') as fh:
-            fh.write('load_data("%s",' % "whole")
-            json.dump(img_byte_arr, fh)
-            fh.write(",'")
-            table = q2templates.df_to_html(corsum, escape=False)
-            fh.write(table.replace('\n', '').replace("'", "\\'"))
-            fh.write("','")
-            fh.write(quote("whole_corr.csv"))
-            fh.write("');")
-        filenames.append(jsonp)
+                ## End of summarize for the raw abundances
         
     index = os.path.join(TEMPLATES, 'index.html')
     q2templates.render(index, output_dir, context={

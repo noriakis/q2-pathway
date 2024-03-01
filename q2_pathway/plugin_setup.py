@@ -87,6 +87,7 @@ plugin.visualizers.register_function(
         'convert': Str,
         'map_ko': Bool,
         'cor_fig_width': Int,
+        'use_p': Bool,
         'tables_name': List[Str]
     },
     parameter_descriptions={
@@ -99,6 +100,7 @@ plugin.visualizers.register_function(
         'convert': 'Converting table (first column the original sample ID and second column the converted ID)',
         'map_ko': 'Insert the KO description in the output',
         'cor_fig_width': 'Correlation figure width',
+        'use_p': 'Use p-values from Wilcoxon rank sum tests for evaulation (Sun et al. 2020)',
         'tables_name': 'table name for the output, must be the same length as the specified table list'
     },
     name="Summarize the output of functional prediction.",
