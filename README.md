@@ -26,6 +26,9 @@ The `summarize` module reports and compares the KO abundance table between the t
 Althoug there is already a plugin (`q2-aldex2`), the function can rank the genes based on the statistics from ALDEx2. One should install ALDEx2 (`BiocManager::install("ALDEx2")`) beforehand.
 
 
+`infer` module can perform an inferrence based on Piphillin or Tax4Fun2. For Tax4Fun2, the users should install the R package in the QIIME2 environment following [this tutorial](https://github.com/songweizhi/Tax4Fun2_short_tutorial), and download the reference database.
+The database path should be set to `--p-reference-database`.
+
 ```shell
 qiime pathway infer \
     --i-sequences rep-seqs.qza \

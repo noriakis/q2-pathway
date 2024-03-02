@@ -128,7 +128,9 @@ plugin.methods.register_function(
         'cn_table': Str,
         'cn_16s_table': Str,
         'full': Bool,
-        'pct_id': Float
+        'pct_id': Float,
+        'algorithm': Str,
+        'reference_database': Str
     },
     parameter_descriptions={
         'threads': 'The number of threads',
@@ -136,8 +138,10 @@ plugin.methods.register_function(
         'cn_table': 'gene copy number table, default to the preset database.',
         'cn_16s_table': '16S gene copy number table, default to the preset database.',
         'full': 'Output the full stratified table',
-        'pct_id': 'Percent of identity, default to 0.99'
+        'pct_id': 'Percent of identity, default to 0.99',
+        'algorithm': '`piphillin` or `tax4fun2`, defaul to piphillin',
+        'reference_database': 'if tax4fun2, provide path to the default database'
     },
-    name="Run Piphillin algorithm",
-    description=("Run Piphillin algorithm")
+    name="Run inferring algorithm",
+    description=("Run inferring algorithm")
 )
