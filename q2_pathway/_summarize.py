@@ -313,6 +313,8 @@ def summarize(output_dir: str,
                         fh.write("');")
                     filenames.append(jsonp)
                     
+                    csv_path = os.path.join(output_dir, prefix + "_corr.csv")                                
+
                     ## Correlation output per KO per dataset
                     if tbl_len > 1:
                         ## If multiple tables, append scatterplot
@@ -350,14 +352,13 @@ def summarize(output_dir: str,
                         # plt.clf()
                         plt.close(fig.fig)
                     
+                    corrtbl.to_csv(csv_path)
+
                     img = Image.open(path.join(output_dir, column+"_"+ko+"_heatmap.png"))
                     img_byte_arr = io.BytesIO()
                     img.save(img_byte_arr, format='PNG')
                     img_byte_arr = base64.b64encode(img_byte_arr.getvalue()).decode("utf-8")
 
-                    csv_path = os.path.join(output_dir, prefix + "_corr.csv")                                
-                    corr.to_csv(csv_path)
-                
                 
                     
                     ## Save the image
@@ -370,7 +371,7 @@ def summarize(output_dir: str,
                         table = q2templates.df_to_html(corr, escape=False)
                         fh.write(table.replace('\n', '').replace("'", "\\'"))
                         fh.write("','")
-                        fh.write(quote(prefix+"_corr.csv"))
+                        fh.write(quote(prefix+".csv"))
                         fh.write("');")
                     filenames.append(jsonp)
                     
