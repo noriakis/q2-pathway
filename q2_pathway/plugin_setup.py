@@ -50,22 +50,24 @@ plugin.visualizers.register_function(
 ## gsea
 plugin.visualizers.register_function(
     function=q2_pathway.gsea,
-    inputs={'ko_table': FeatureTable[Frequency]},
-    input_descriptions={'ko_table': 'table containing KO abundance per sample'},
+    inputs={'tables': List[FeatureTable[Frequency]]},
+    input_descriptions={'tables': 'list of tables containing KO abundance per sample'},
     parameters={
         'metadata': Metadata,
         'tss': Bool,
         'method': Str,
         'mc_samples': Int,
         'map_pathway': Bool,
-        'module': Bool
+        'module': Bool,
+        'tables_name': List[Str]
     },
     parameter_descriptions={
         'tss': 'total-sum scaling per sample before all the analysis',
         'method': 'which value to show in the image',
         'mc_samples': 'parameter for ALDEx2::aldex',
         'map_pathway': 'map pathway name',
-        'module': 'If specified, perform GSEA based on module - KO relationship. default to False'   
+        'module': 'If specified, perform GSEA based on module - KO relationship. default to False',
+        'tables_name': 'table name for the output, must be the same length as the specified table list'
     },
     name="Perform GSEA by the R package fgsea (experimental)",
     description=("Perform GSEA by the R package fgsea (experimental)")
