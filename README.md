@@ -30,11 +30,24 @@ qiime pathway infer \
     --p-threads 0
 ```
 
-Also, `gsea` module is implemented for performing GSEA using `fgsea`, based on the KEGG PATHWAY mapping. The users should perform with `--verbose` for inspecting the GSEA output (like the existing of the ties).
+Also, `gsea` module is implemented for performing GSEA using `fgsea`, based on the KEGG PATHWAY mapping. The users should perform with `--verbose` for inspecting the GSEA output (like the existing of the ties). Althoug there is already a plugin (`q2-aldex2`), the function can rank the genes based on the statistics from ALDEx2. One should install ALDEx2 (`BiocManager::install("ALDEx2")`) beforehand.
+
+
+```shell
+qiime pathway gsea \
+    --i-ko-table ko_metagenome.qza \
+    --m-metadata-file metadata.tsv \
+    --o-visualization gsea_output
+```
 
 The `summarize` module reports and compares the KO abundance table between the tables produced by multiple inference method. Using [`q2-sapienns`](https://github.com/gregcaporaso/q2-sapienns), the results from the shotgun metagenomics data can also be compared.
 
-Althoug there is already a plugin (`q2-aldex2`), the function can rank the genes based on the statistics from ALDEx2. One should install ALDEx2 (`BiocManager::install("ALDEx2")`) beforehand.
+```shell
+qiime pathway summarize \
+    --i-ko-table ko_metagenome.qza \
+    --m-metadata-file metadata.tsv \
+    --o-visualization vis_output
+```
 
 `kegg` module is implemented for visualization of KEGG PATHWAY images colored by the statistics calculated from comparing the categorical variables in the metadata.
 
@@ -46,16 +59,4 @@ qiime pathway kegg \
     --o-visualization pathway_output
 ```
 
-```shell
-qiime pathway gsea \
-    --i-ko-table ko_metagenome.qza \
-    --m-metadata-file metadata.tsv \
-    --o-visualization gsea_output
-```
 
-```shell
-qiime pathway summarize \
-    --i-ko-table ko_metagenome.qza \
-    --m-metadata-file metadata.tsv \
-    --o-visualization vis_output
-```
