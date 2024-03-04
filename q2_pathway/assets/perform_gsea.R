@@ -4,14 +4,31 @@ argv <- commandArgs(trailingOnly = TRUE)
 outputDir <- argv[1]
 pref <- argv[2]
 kon <- as.integer(argv[3])
+bg <- argv[4]
 
 cat("Beginning GSEA by fgsea\n")
 cat(pref, "\n")
 
 
+ranks <- read.table(paste0(outputDir, "/values_",pref,".tsv"), sep="\t", header=FALSE)
+
+## Remove NA
+ranks <- ranks[!is.na(ranks$V2),]
+
+vals <- ranks$V2
+names(vals) <- ranks$V1
+vals <- sort(vals, decreasing=TRUE)
+
 
 ## Should be done in python
 pathmap <- read.table(paste0(outputDir, "/pathway_map.tsv"), sep="\t", header=FALSE)
+
+
+if (bg!="all") {
+    pathmap <- pathmap[pathmap$V2 %in% names(vals), ]
+}
+
+cat(dim(pathmap)[1], "\n")
 
 if (kon==1) {
     change <- read.table(paste0(outputDir, "/pathway_names.tsv"), sep="\t", header=FALSE)
@@ -32,14 +49,8 @@ nl <- lapply(paths, function(p) {
 
 names(nl) <- paths
 
-ranks <- read.table(paste0(outputDir, "/values_",pref,".tsv"), sep="\t", header=FALSE)
 
-## Remove NA
-ranks <- ranks[!is.na(ranks$V2),]
 
-vals <- ranks$V2
-names(vals) <- ranks$V1
-vals <- sort(vals, decreasing=TRUE)
 res <- fgsea::fgsea(nl, vals)
 ores <- data.frame(res)
 

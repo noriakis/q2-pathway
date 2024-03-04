@@ -230,7 +230,7 @@ def trunc(x):
 
 def gsea(output_dir: str, tables: pd.DataFrame, metadata: qiime2.Metadata, tss: bool = False,
     method: str = "t", mc_samples: int = 128, module: bool = False, map_pathway: bool = False,
-    tables_name: str = None):
+    tables_name: str = None, bg: str = "all"):
     
     if tss:
         tables = [ko_table.apply(lambda x: x / sum(x), axis=1) for tables in tables]
@@ -347,7 +347,7 @@ def gsea(output_dir: str, tables: pd.DataFrame, metadata: qiime2.Metadata, tss: 
                     filenames.append(jsonp)
                 
                 ## Perform GSEA
-                cmd = ["Rscript", path.join(TEMPLATES, "perform_gsea.R"), output_dir, prefix, str(konflag)]
+                cmd = ["Rscript", path.join(TEMPLATES, "perform_gsea.R"), output_dir, prefix, str(konflag), bg]
                 try:
                     res = subprocess.run(cmd, check=True)
                 except subprocess.CalledProcessError as e:

@@ -59,7 +59,8 @@ plugin.visualizers.register_function(
         'mc_samples': Int,
         'map_pathway': Bool,
         'module': Bool,
-        'tables_name': List[Str]
+        'tables_name': List[Str],
+        'bg': Str
     },
     parameter_descriptions={
         'tss': 'total-sum scaling per sample before all the analysis',
@@ -67,7 +68,8 @@ plugin.visualizers.register_function(
         'mc_samples': 'parameter for ALDEx2::aldex',
         'map_pathway': 'map pathway name',
         'module': 'If specified, perform GSEA based on module - KO relationship. default to False',
-        'tables_name': 'table name for the output, must be the same length as the specified table list'
+        'tables_name': 'table name for the output, must be the same length as the specified table list',
+        'bg': 'Background KOs, default to `all`. If other option is specified, subset for the KOs within the dataset'
     },
     name="Perform GSEA by the R package fgsea (experimental)",
     description=("Perform GSEA by the R package fgsea (experimental)")
