@@ -69,7 +69,7 @@ plugin.visualizers.register_function(
         'map_pathway': 'map pathway name',
         'module': 'If specified, perform GSEA based on module - KO relationship. default to False',
         'tables_name': 'table name for the output, must be the same length as the specified table list',
-        'bg': 'Background KOs, default to `all`. If other option is specified, subset for the KOs within the dataset'
+        'bg': 'Background KOs, default to `all`. If other option is specified, subset for the KOs within the corresponding table. ORA option.'
     },
     name="Perform GSEA by the R package fgsea (experimental)",
     description=("Perform GSEA by the R package fgsea (experimental)")

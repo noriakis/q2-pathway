@@ -347,6 +347,8 @@ def gsea(output_dir: str, tables: pd.DataFrame, metadata: qiime2.Metadata, tss: 
                     filenames.append(jsonp)
                 
                 ## Perform GSEA
+                if bg != "all":
+                    pd.Series(["ko:"+i for i in ko_table.columns]).to_csv(os.path.join(output_dir, prefix+"_all_KO.txt"), sep="\t", index=False, header=False)
                 cmd = ["Rscript", path.join(TEMPLATES, "perform_gsea.R"), output_dir, prefix, str(konflag), bg]
                 try:
                     res = subprocess.run(cmd, check=True)

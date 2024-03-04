@@ -25,7 +25,8 @@ pathmap <- read.table(paste0(outputDir, "/pathway_map.tsv"), sep="\t", header=FA
 
 
 if (bg!="all") {
-    pathmap <- pathmap[pathmap$V2 %in% names(vals), ]
+    bgt <- read.table(paste0(outputDir, "/", pref, "_all_KO.txt"), sep="\t", header=FALSE)
+    pathmap <- pathmap[pathmap$V2 %in% bgt$V1, ]
 }
 
 cat(dim(pathmap)[1], "\n")
