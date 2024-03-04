@@ -21,6 +21,8 @@ cat(pwd_op_folder, query_otu_seq, query_otu_table, pwd_ref_data, iden, num_of_th
 
 ## From the tutorial code
 norm_by_cn      = TRUE                          # normalize_by_copy_number (TRUE or FALSE)
+
+## The plugin do not use pathway output though
 norm_path       = TRUE                          # normalize_pathways (TRUE or FALSE)
 
 # predict functions

@@ -147,3 +147,20 @@ plugin.methods.register_function(
     name="Run inferring algorithm",
     description=("Run inferring algorithm")
 )
+
+plugin.methods.register_function(
+    function=q2_pathway.aggregate,
+    inputs={'table': FeatureTable[Frequency]},
+    input_descriptions={'table': 'table containing KO abundance per sample'},
+    outputs=[('out_table', FeatureTable[Frequency])],
+    parameters={
+        'method': Str,
+        'module': Bool
+    },
+    parameter_descriptions={
+        'method': 'how to aggregate the abundance',
+        'module': 'If specified, perform GSEA based on module - KO relationship. default to False'
+    },
+    name="Aggregate family abundance to high order abundance",
+    description=("Aggregate family abundance to high order abundance")
+)
