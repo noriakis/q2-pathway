@@ -40,7 +40,7 @@ qiime pathway gsea \
     --o-visualization gsea_output
 ```
 
-The `summarize` module reports and compares the KO abundance table between the tables produced by multiple inference method. Using [`q2-sapienns`](https://github.com/gregcaporaso/q2-sapienns), the results from the shotgun metagenomics data can also be compared.
+The `summarize` module reports and compares the KO abundance table between the tables produced by multiple inference method. Using [`q2-sapienns`](https://github.com/gregcaporaso/q2-sapienns), the results from the shotgun metagenomics data can also be compared. The correlation metrics can be chosen from `spearman`, `pearson`, `kendall` by `--p-method`.
 
 ```shell
 qiime pathway summarize \
