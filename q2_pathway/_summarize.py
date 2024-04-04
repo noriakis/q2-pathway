@@ -34,6 +34,7 @@ def summarize(output_dir: str,
     method: str = "spearman",
     tables_name: str = None,
     cor_fig_width: int = 12,
+    cor_thresh: float = None,
     map_ko: bool = False) -> None:
 
 
@@ -115,7 +116,7 @@ def summarize(output_dir: str,
         all_cols = kop[kop[0].isin([candidate_pathway])][1].tolist()
         all_cols = list(set(all_kos) & set(all_cols))
 
-    ## Loose checking (tax1_K00001)
+    ## Loose checking (assuming stratified table is depicted as tax1_K00001)
     if "_" in all_cols[0]:
         strat = True
         ko_table = tables[0]
@@ -378,16 +379,18 @@ def summarize(output_dir: str,
                     corr = corr.where(np.triu(np.ones(corr.shape)).astype(bool))
                     corr = corr.stack().reset_index()
                     corr.columns = ['d1','d2','value']
+                    corr["ko"] = ko
                     corrs.append(corr)
-
 
                 ## Correlation summarization by boxplot for 
                 ## every dataset pairs
-                        
                 all_cor = pd.concat(corrs)
-                corsum = all_cor.groupby("d1").apply(lambda x: x.groupby("d2").agg({'value': ['mean', 'median', 'min', 'max']}))
                 csv_path = os.path.join(output_dir, "whole_corr.csv")                                
                 all_cor.to_csv(csv_path)
+
+
+                ## Correlation statistics
+                corsum = all_cor.groupby("d1").apply(lambda x: x.groupby("d2").agg({'value': ['mean', 'median', 'min', 'max']}))
 
                 all_cor["label"] = all_cor.d1.map(str) + " - " + all_cor.d2
                 plt.figure(figsize=(12,10))
@@ -416,6 +419,44 @@ def summarize(output_dir: str,
                     fh.write("');")
                 filenames.append(jsonp)
                 ## End of summarize for the raw abundances
+
+                if cor_thresh is not None:
+                    ## Subset to between dataset correlation
+                    subset_cor = all_cor[all_cor.d1 != all_cor.d2]
+                    kostat = subset_cor.groupby("ko").agg({'value': ['mean', 'median', 'min', 'max']})
+                    kostat["ko"] = kostat.index.values
+                    kostat["mean"] = kostat[("value","mean")]
+
+                    outp = kostat.loc[:,["ko","mean"]]
+                    outp = outp[outp["mean"] > cor_thresh]
+                    csv_path = os.path.join(output_dir, "cor_thresh_"+str(cor_thresh)+".csv")
+                    outp.to_csv(csv_path)
+
+                    plt.figure(figsize=(12,10))
+                    g = sns.barplot(kostat, x="ko", y="mean")
+                    plt.xticks(rotation=45)
+                    plt.tight_layout()
+                    fig = g.get_figure()
+                    fig.savefig(path.join(output_dir, "corr_thresh.png"))
+                    plt.close()
+                    
+                    img = Image.open(path.join(output_dir, "corr_thresh.png"))
+                    img_byte_arr = io.BytesIO()
+                    img.save(img_byte_arr, format='PNG')
+                    img_byte_arr = base64.b64encode(img_byte_arr.getvalue()).decode("utf-8")
+
+                    pref = "cor_thresh_"+str(cor_thresh)
+                    jsonp = pref + ".jsonp"
+                    with open(os.path.join(output_dir, jsonp), 'w') as fh:
+                        fh.write('load_data("%s",' % pref)
+                        json.dump(img_byte_arr, fh)
+                        fh.write(",'")
+                        table = q2templates.df_to_html(outp, escape=False)
+                        fh.write(table.replace('\n', '').replace("'", "\\'"))
+                        fh.write("','")
+                        fh.write(quote(pref+".csv"))
+                        fh.write("');")
+                    filenames.append(jsonp)
         
     index = os.path.join(TEMPLATES, 'index.html')
     q2templates.render(index, output_dir, context={
