@@ -2,6 +2,11 @@
 
 QIIME 2 plugin for analyzing gene family abundances and biological pathway information obtained from 16S rRNA gene sequencing data.
 
+
+<p align="center">
+<img src="https://github.com/noriakis/software/blob/main/images/q2-pathway-diagram.png?raw=true" width="500px">
+</p>
+
 ## Installation
 
 After activating the QIIME 2 environment, ALDEx2 shuold be installed if you are to use the statistics from the package.
