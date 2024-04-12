@@ -1,10 +1,10 @@
 # q2-pathway
 
-QIIME2 plugin for analyzing gene family abundances and biological pathway information obtained from 16S rRNA gene sequencing data.
+QIIME 2 plugin for analyzing gene family abundances and biological pathway information obtained from 16S rRNA gene sequencing data.
 
 ## Installation
 
-After activating the QIIME2 environment, ALDEx2 shuold be installed if you are to use the statistics from the package.
+After activating the QIIME 2 environment, ALDEx2 shuold be installed if you are to use the statistics from the package.
 
 ```r
 install.packages("BiocManager")
@@ -19,7 +19,7 @@ mamba install -c noriakisato q2-pathway
 
 This plugin is used to analyze the functional prediction results from 16S rRNA gene sequencing dataset and optionally the profile from shotgun metagenomes.
 
-`infer` module can perform an inferrence based on Piphillin or Tax4Fun2. For Tax4Fun2, the users should install the R package in the QIIME2 environment following [this tutorial](https://github.com/songweizhi/Tax4Fun2_short_tutorial), and download the reference database.
+`infer` module can perform an inferrence based on Piphillin or Tax4Fun2. For Tax4Fun2, the users should install the R package in the QIIME 2 environment following [this tutorial](https://github.com/songweizhi/Tax4Fun2_short_tutorial), and download the reference database.
 The database path should be set to `--p-reference-database`. For `Piphillin`, the prebuilt database is attached with conda installation.
 
 ```shell
@@ -40,7 +40,7 @@ qiime pathway gsea \
     --o-visualization gsea_output
 ```
 
-The `summarize` module reports and compares the gene family abundance table between the tables produced by multiple inference method. Using [`q2-sapienns`](https://github.com/gregcaporaso/q2-sapienns), the results from the shotgun metagenomics data can also be compared. The correlation metrics can be chosen from `spearman`, `pearson`, `kendall` by `--p-method`. Also, the correlation based on the p-values proposed in Sun et al. 2020. can be calculated by specifying `--p-use-p`.
+The `summarize` module reports and compares the gene family abundance table between the tables produced by multiple inference methods including [q2-picrust2](https://github.com/gavinmdouglas/q2-picrust2). Using [`q2-sapienns`](https://github.com/gregcaporaso/q2-sapienns), the results from the shotgun metagenomics data can also be compared. The correlation metrics can be chosen from `spearman`, `pearson`, `kendall` by `--p-method`. Also, the correlation based on the p-values proposed in Sun et al. 2020. can be calculated by specifying `--p-use-p`.
 
 ```shell
 qiime pathway summarize \
