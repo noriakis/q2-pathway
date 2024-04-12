@@ -40,7 +40,7 @@ qiime pathway gsea \
     --o-visualization gsea_output
 ```
 
-The `summarize` module reports and compares the gene family abundance table between the tables produced by multiple inference methods including [q2-picrust2](https://github.com/gavinmdouglas/q2-picrust2). Using [`q2-sapienns`](https://github.com/gregcaporaso/q2-sapienns), the results from the shotgun metagenomics data can also be compared. The correlation metrics can be chosen from `spearman`, `pearson`, `kendall` by `--p-method`. Also, the correlation based on the p-values proposed in Sun et al. 2020. can be calculated by specifying `--p-use-p`.
+The `summarize` module reports and compares the gene family abundance table between the tables produced by multiple inference methods including [`q2-picrust2`](https://github.com/gavinmdouglas/q2-picrust2). Using [`q2-sapienns`](https://github.com/gregcaporaso/q2-sapienns), the results from the shotgun metagenomics data can also be compared. The correlation metrics can be chosen from `spearman`, `pearson`, `kendall` by `--p-method`. Also, the correlation based on the p-values proposed in Sun et al. 2020. can be calculated by specifying `--p-use-p`.
 
 ```shell
 qiime pathway summarize \
