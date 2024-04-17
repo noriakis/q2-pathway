@@ -13,12 +13,13 @@ TEMPLATES = pkg_resources.resource_filename('q2_pathway', 'assets')
 ## Option to use q2-gcn-norm for normalizing by rrnDB
 def infer(sequences: pd.Series,
 	    seq_table: pd.DataFrame,
-	    reference_sequences: str = path.join(TEMPLATES, "16S_seqs.fasta.gz"),
-        cn_table: str = path.join(TEMPLATES, "ko_copynum.tsv.gz"),
-        cn_16s_table: str = path.join(TEMPLATES, "16S_cn.tsv.gz"), 
         threads: int = 1, full: bool = False,
         pct_id: float = 0.99, algorithm: str = "piphillin",
         reference_database: str = None) -> pd.DataFrame:
+    
+    reference_sequences = path.join(TEMPLATES, "16S_seqs.fasta.gz")
+    cn_table = path.join(TEMPLATES, "ko_copynum.tsv.gz")
+    cn_16s_table = path.join(TEMPLATES, "16S_cn.tsv.gz")
 
     with TemporaryDirectory() as temp_dir:
         repseq = path.join(temp_dir, "rep_seqs.fna")

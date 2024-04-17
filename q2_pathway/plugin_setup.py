@@ -124,15 +124,15 @@ plugin.methods.register_function(
         'seq_table': FeatureTable[Frequency]
     },
     input_descriptions={
-        'sequences': 'representative sequences to be profiled',
-        'seq_table': 'sequence count table'
+        'sequences': 'Representative sequences to be profiled',
+        'seq_table': 'Sequence count table'
     },
     outputs=[('table', FeatureTable[Frequency])],
     parameters={
         'threads': Int,
-        'reference_sequences': Str,
-        'cn_table': Str,
-        'cn_16s_table': Str,
+        # 'reference_sequences': Str,
+        # 'cn_table': Str,
+        # 'cn_16s_table': Str,
         'full': Bool,
         'pct_id': Float,
         'algorithm': Str,
@@ -140,13 +140,13 @@ plugin.methods.register_function(
     },
     parameter_descriptions={
         'threads': 'The number of threads',
-        'reference_sequences': '16S reference sequences, default to the preset database.',
-        'cn_table': 'gene copy number table, default to the preset database.',
-        'cn_16s_table': '16S gene copy number table, default to the preset database.',
+        # 'reference_sequences': '16S reference sequences, default to the preset database.',
+        # 'cn_table': 'gene copy number table, default to the preset database.',
+        # 'cn_16s_table': '16S gene copy number table, default to the preset database.',
         'full': 'Output the full stratified table',
         'pct_id': 'Percent of identity, default to 0.99',
-        'algorithm': '`piphillin` or `tax4fun2`, defaul to piphillin',
-        'reference_database': 'if tax4fun2, provide path to the default database'
+        'algorithm': '`piphillin` or `tax4fun2`, defaul to `piphillin`',
+        'reference_database': 'if `tax4fun2`, provide path to the default database'
     },
     name="Run inferring algorithm",
     description=("Run inferring algorithm")
