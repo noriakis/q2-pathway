@@ -9,6 +9,7 @@ from tempfile import TemporaryDirectory
 import pkg_resources
 TEMPLATES = pkg_resources.resource_filename('q2_pathway', 'assets')
 
+## Convert Piphillin database to QZA
 ## Option to use q2-gcn-norm for normalizing by rrnDB
 def infer(sequences: pd.Series,
 	    seq_table: pd.DataFrame,
@@ -57,6 +58,8 @@ def infer(sequences: pd.Series,
 
             return(ko.T)
         elif algorithm == "tax4fun2":
+            ## Although the input filepath is discouraged, the Tax4Fun2 database is structured
+            ## inside the archive and cannot be properly converted to QZA.
             if reference_database is None:
                 raise ValueError("Please provide Tax4Fun2 default database path to `reference_database`.")
             cmd = ["Rscript", path.join(TEMPLATES, "perform_tax4fun2.R"),

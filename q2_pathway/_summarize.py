@@ -24,12 +24,12 @@ ko_url = "https://www.genome.jp/dbget-bin/www_bget?"
 def summarize(output_dir: str,
     tables: pd.DataFrame,
     metadata: qiime2.Metadata,
+    convert_table: qiime2.Metadata = None,
     first: int = 100,
     candidate_pathway: str = None,
     candidate: str = None,
     tss: bool = False,
     split_str: str = None,
-    convert: str = None,
     use_p: bool = False,
     method: str = "spearman",
     tables_name: str = None,
@@ -39,19 +39,20 @@ def summarize(output_dir: str,
 
 
     if map_ko:
-        ## Obtain KO description
+        ## Obtain KO description from KEGG REST API
+        
         koname = pd.read_csv("https://rest.kegg.jp/list/ko", sep="\t", header=None, index_col=0)
         kodic = koname[1].to_dict()
 
-    ## Converting table should be tab-separated file
-    ## with *no header*, and first column corresponds to sample-id and 
-    ## second column converted ID.
-    ## So if shotgun profiled qza is to be read, first column corresponds to
-    ## shotgun-ID and second column corresponds to 16S-ID.
-
-    if convert is not None:
-        mapping = pd.read_csv(convert, sep="\t", header=None, index_col=0)
-        change = mapping[1].to_dict()
+    if convert_table is not None:
+        ## Converting table should be artifact
+        ## with the column name of "converted".
+        ## So if shotgun profiled qza is to be read,
+        ## the index should be shotgun-ID and "converted" column
+        ## corresponds to 16S-ID.
+        mapping = convert_table.to_dataframe()
+        # mapping = pd.read_csv(convert, sep="\t", header=None, index_col=0)
+        change = mapping["converted"].to_dict()
 
     tbl_len = len(tables)
 
@@ -70,7 +71,7 @@ def summarize(output_dir: str,
     if split_str is not None:
         samples = [[i.split(quote(split_str))[0] for i in j] for j in samples]
 
-    if convert is not None:
+    if convert_table is not None:
         samples = [[change[i] if i in change.keys() else i for i in j] for j in samples]
 
     all_samples = list(set.intersection(*map(set, samples)))
@@ -200,7 +201,7 @@ def summarize(output_dir: str,
                 ## Rename sample id based on the parameter
                 if split_str is not None:
                     table.index = [i.split(quote(split_str))[0] for i in table.index.values]
-                if convert is not None:
+                if convert_table is not None:
                     table.index = [change[i] if i in change.keys() else i for i in table.index.values]
                 if not use_p:
                     tmp = pd.concat([table, metadata_df_filt], axis=1, join='inner')
