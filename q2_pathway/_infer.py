@@ -9,7 +9,6 @@ from tempfile import TemporaryDirectory
 import pkg_resources
 TEMPLATES = pkg_resources.resource_filename('q2_pathway', 'assets')
 
-## Convert Piphillin database to QZA
 ## Option to use q2-gcn-norm for normalizing by rrnDB
 def infer(sequences: pd.Series,
 	    seq_table: pd.DataFrame,

@@ -20,6 +20,21 @@ import pkg_resources
 TEMPLATES = pkg_resources.resource_filename('q2_pathway', 'assets')
 ko_url = "https://www.genome.jp/dbget-bin/www_bget?"
 
+def output_json(prefix,
+    output_dir,
+    jsonp,
+    img_byte_arr,
+    output):
+    with open(os.path.join(output_dir, jsonp), 'w') as fh:
+        fh.write('load_data("%s",' % prefix)
+        json.dump(img_byte_arr, fh)
+        fh.write(",'")
+        table = q2templates.df_to_html(output, escape=False)
+        fh.write(table.replace('\n', '').replace("'", "\\'"))
+        fh.write("','")
+        fh.write(quote(prefix+".csv"))
+        fh.write("');")
+    
 
 def summarize(output_dir: str,
     tables: pd.DataFrame,
@@ -168,26 +183,16 @@ def summarize(output_dir: str,
                 if map_ko:
                     if ko in kodic.keys():
                         output["ko_description"] = kodic[ko]
-                
+                                
                 output.to_csv(csv_path)
 
                 if ko.startswith("K"):
                     output["ko"] = '<a href="'+ko_url+ko+'">'+ko+'</a>'
                 else:
                     output["ko"] = ko
-                    
-                
-                ## Save the image
+                                    
                 jsonp = prefix + ".jsonp"
-                with open(os.path.join(output_dir, jsonp), 'w') as fh:
-                    fh.write('load_data("%s",' % prefix)
-                    json.dump(img_byte_arr, fh)
-                    fh.write(",'")
-                    table = q2templates.df_to_html(output, escape=False)
-                    fh.write(table.replace('\n', '').replace("'", "\\'"))
-                    fh.write("','")
-                    fh.write(quote(prefix+".csv"))
-                    fh.write("');")
+                output_json(prefix, output_dir, jsonp, img_byte_arr, output)
                 filenames.append(jsonp)
                 ## Per-KO stratified abundance per species
                 
@@ -215,8 +220,8 @@ def summarize(output_dir: str,
                     ## We only need KO counts
                     concs.append(table)
 
-            ## If Wilcoxon-based correlation, we ignore the 
-            ## candidate, candidate_pathway, and first option
+            ## If Wilcoxon-based correlation (sun et al. 2020.),
+            ## we ignore the `candidate`, `candidate_pathway`, and `first` option
             if use_p:
                 base = list(combinations(levels, 2))
                 for pair in base:
@@ -257,15 +262,7 @@ def summarize(output_dir: str,
 
                     prefix = prefix + "_corr"
                     jsonp = prefix + ".jsonp"
-                    with open(os.path.join(output_dir, jsonp), 'w') as fh:
-                        fh.write('load_data("%s",' % prefix)
-                        json.dump(img_byte_arr, fh)
-                        fh.write(",'")
-                        table = q2templates.df_to_html(corr, escape=False)
-                        fh.write(table.replace('\n', '').replace("'", "\\'"))
-                        fh.write("','")
-                        fh.write(quote(prefix+"_corr.csv"))
-                        fh.write("');")
+                    output_json(prefix, output_dir, jsonp, img_byte_arr, corr)
                     filenames.append(jsonp)
 
             else: ## End of summarize for using the p-values
@@ -276,11 +273,9 @@ def summarize(output_dir: str,
                         continue
                     conc = pd.concat([data.loc[:, [column, ko, "category"]] for data in concs], axis=0)
                         
-                    # plt.figure()
                     g = sns.FacetGrid(conc, col="category")
                     g.map(sns.boxplot, column, ko, order=levels)
                     g.savefig(path.join(output_dir, prefix + ".png"))
-                    # plt.clf()
                     plt.close(g.fig)
                         
                     img = Image.open(path.join(output_dir, column+"_"+ko+".png"))
@@ -304,18 +299,10 @@ def summarize(output_dir: str,
                 
                     ## Save the image
                     jsonp = prefix + ".jsonp"
-                    with open(os.path.join(output_dir, jsonp), 'w') as fh:
-                        fh.write('load_data("%s",' % prefix)
-                        json.dump(img_byte_arr, fh)
-                        fh.write(",'")
-                        table = q2templates.df_to_html(output, escape=False)
-                        fh.write(table.replace('\n', '').replace("'", "\\'"))
-                        fh.write("','")
-                        fh.write(quote(prefix+".csv"))
-                        fh.write("');")
+                    output_json(prefix, output_dir, jsonp, img_byte_arr, output)
                     filenames.append(jsonp)
                     
-                    csv_path = os.path.join(output_dir, prefix + "_corr.csv")                                
+                           
 
                     ## Correlation output per KO per dataset
                     if tbl_len > 1:
@@ -337,9 +324,9 @@ def summarize(output_dir: str,
 
                         figs = fig.get_figure()
                         figs.savefig(path.join(output_dir, prefix + "_heatmap.png"))
-                        # plt.clf()
                         plt.close(fig)
                     else:
+                        ## Only heatmap
                         corrtbl = pd.concat([table.loc[all_samples, ko] for table in tables], axis=1)
                         if tables_name is not None:
                             corrtbl.columns = tables_name
@@ -351,9 +338,9 @@ def summarize(output_dir: str,
                         fig = sns.heatmap(corr, annot=True)
                         figs = fig.get_figure()
                         figs.savefig(path.join(output_dir, prefix + "_heatmap.png"))
-                        # plt.clf()
                         plt.close(fig.fig)
                     
+                    csv_path = os.path.join(output_dir, prefix + "_corr.csv")                    
                     corrtbl.to_csv(csv_path)
 
                     img = Image.open(path.join(output_dir, column+"_"+ko+"_heatmap.png"))
@@ -361,30 +348,20 @@ def summarize(output_dir: str,
                     img.save(img_byte_arr, format='PNG')
                     img_byte_arr = base64.b64encode(img_byte_arr.getvalue()).decode("utf-8")
 
-                
-                    
                     ## Save the image
                     prefix = prefix + "_corr"
                     jsonp = prefix + ".jsonp"
-                    with open(os.path.join(output_dir, jsonp), 'w') as fh:
-                        fh.write('load_data("%s",' % prefix)
-                        json.dump(img_byte_arr, fh)
-                        fh.write(",'")
-                        table = q2templates.df_to_html(corr, escape=False)
-                        fh.write(table.replace('\n', '').replace("'", "\\'"))
-                        fh.write("','")
-                        fh.write(quote(prefix+".csv"))
-                        fh.write("');")
+                    output_json(prefix, output_dir, jsonp, img_byte_arr, corr)
                     filenames.append(jsonp)
                     
+                    ## Keep the correlation values
                     corr = corr.where(np.triu(np.ones(corr.shape)).astype(bool))
                     corr = corr.stack().reset_index()
                     corr.columns = ['d1','d2','value']
                     corr["ko"] = ko
                     corrs.append(corr)
 
-                ## Correlation summarization by boxplot for 
-                ## every dataset pairs
+                ## Correlation summarization by boxplot for every dataset pairs
                 all_cor = pd.concat(corrs)
                 csv_path = os.path.join(output_dir, "whole_corr.csv")                                
                 all_cor.to_csv(csv_path)
@@ -400,26 +377,17 @@ def summarize(output_dir: str,
                 plt.tight_layout()
                 fig = g.get_figure()
                 fig.savefig(path.join(output_dir, "whole_corr.png"))
-                # plt.clf()
                 plt.close()
                 
                 img = Image.open(path.join(output_dir, "whole_corr.png"))
                 img_byte_arr = io.BytesIO()
                 img.save(img_byte_arr, format='PNG')
                 img_byte_arr = base64.b64encode(img_byte_arr.getvalue()).decode("utf-8")
-
-                jsonp = "whole.jsonp"
-                with open(os.path.join(output_dir, jsonp), 'w') as fh:
-                    fh.write('load_data("%s",' % "whole")
-                    json.dump(img_byte_arr, fh)
-                    fh.write(",'")
-                    table = q2templates.df_to_html(corsum, escape=False)
-                    fh.write(table.replace('\n', '').replace("'", "\\'"))
-                    fh.write("','")
-                    fh.write(quote("whole_corr.csv"))
-                    fh.write("');")
+                
+                prefix= "whole_corr"
+                jsonp = prefix+".jsonp"
+                output_json(prefix, output_dir, jsonp, img_byte_arr, corsum)
                 filenames.append(jsonp)
-                ## End of summarize for the raw abundances
 
                 if cor_thresh is not None:
                     ## Subset to between dataset correlation
@@ -448,15 +416,7 @@ def summarize(output_dir: str,
 
                     pref = "cor_thresh_"+str(cor_thresh)
                     jsonp = pref + ".jsonp"
-                    with open(os.path.join(output_dir, jsonp), 'w') as fh:
-                        fh.write('load_data("%s",' % pref)
-                        json.dump(img_byte_arr, fh)
-                        fh.write(",'")
-                        table = q2templates.df_to_html(outp, escape=False)
-                        fh.write(table.replace('\n', '').replace("'", "\\'"))
-                        fh.write("','")
-                        fh.write(quote(pref+".csv"))
-                        fh.write("');")
+                    output_json(pref, output_dir, jsonp, img_byte_arr, outp)
                     filenames.append(jsonp)
         
     index = os.path.join(TEMPLATES, 'index.html')
