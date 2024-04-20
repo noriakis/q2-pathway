@@ -18,10 +18,11 @@ export default function init(groupIndex) {
   // body.insert('h1', ':first-child').text('KEGG PATHWAY image');
 
   // Plot main
-  document.getElementById("ItemPreview").src = "data:image/png;base64," + data.image;
+  // document.getElementById("ItemPreview").src = "data:image/png;base64," + data.image;
+  document.getElementById("ItemPreview").src = data.image;
 
   // CONTROLS
-//  addDownloadLinks(controlsRow, svg);
+  //  addDownloadLinks(controlsRow, svg);
   addColumnPicker(controlsRow, columns, data.column);
 
   // Show KO Table

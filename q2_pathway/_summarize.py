@@ -22,12 +22,10 @@ ko_url = "https://www.genome.jp/dbget-bin/www_bget?"
 
 def output_json(prefix,
     output_dir,
-    jsonp,
-    img_byte_arr,
     output):
-    with open(os.path.join(output_dir, jsonp), 'w') as fh:
+    with open(os.path.join(output_dir, prefix + ".jsonp"), 'w') as fh:
         fh.write('load_data("%s",' % prefix)
-        json.dump(img_byte_arr, fh)
+        json.dump(prefix + ".png", fh)
         fh.write(",'")
         table = q2templates.df_to_html(output, escape=False)
         fh.write(table.replace('\n', '').replace("'", "\\'"))
@@ -171,10 +169,10 @@ def summarize(output_dir: str,
                 plt.clf()
                 plt.close(bp.fig)
                     
-                img = Image.open(path.join(output_dir, column+"_"+ko+".png"))
-                img_byte_arr = io.BytesIO()
-                img.save(img_byte_arr, format='PNG')
-                img_byte_arr = base64.b64encode(img_byte_arr.getvalue()).decode("utf-8")
+                # img = Image.open(path.join(output_dir, column+"_"+ko+".png"))
+                # img_byte_arr = io.BytesIO()
+                # img.save(img_byte_arr, format='PNG')
+                # img_byte_arr = base64.b64encode(img_byte_arr.getvalue()).decode("utf-8")
 
                 csv_path = os.path.join(output_dir, prefix + ".csv")
                     
@@ -191,9 +189,9 @@ def summarize(output_dir: str,
                 else:
                     output["ko"] = ko
                                     
-                jsonp = prefix + ".jsonp"
-                output_json(prefix, output_dir, jsonp, img_byte_arr, output)
-                filenames.append(jsonp)
+                output_json(prefix, output_dir, output)
+                filenames.append(prefix + ".jsonp")
+
                 ## Per-KO stratified abundance per species
                 
     else: ## If un-stratified
@@ -246,24 +244,24 @@ def summarize(output_dir: str,
                         df.columns = ["data"+str(e) for e, i in enumerate(tables)]
                     corr = df.corr()
 
+                    prefix = prefix + "_corr"
+
                     plt.figure()
                     fig = sns.heatmap(corr, annot=True)
                     figs = fig.get_figure()
-                    figs.savefig(path.join(output_dir, prefix + "_heatmap.png"))
+                    figs.savefig(path.join(output_dir, prefix + ".png"))
                     plt.close()
                     
-                    img = Image.open(path.join(output_dir, prefix+"_heatmap.png"))
-                    img_byte_arr = io.BytesIO()
-                    img.save(img_byte_arr, format='PNG')
-                    img_byte_arr = base64.b64encode(img_byte_arr.getvalue()).decode("utf-8")
+                    # img = Image.open(path.join(output_dir, prefix+"_heatmap.png"))
+                    # img_byte_arr = io.BytesIO()
+                    # img.save(img_byte_arr, format='PNG')
+                    # img_byte_arr = base64.b64encode(img_byte_arr.getvalue()).decode("utf-8")
 
-                    csv_path = os.path.join(output_dir, prefix + "_corr.csv")                                
+                    csv_path = os.path.join(output_dir, prefix + ".csv")                                
                     corr.to_csv(csv_path)
 
-                    prefix = prefix + "_corr"
-                    jsonp = prefix + ".jsonp"
-                    output_json(prefix, output_dir, jsonp, img_byte_arr, corr)
-                    filenames.append(jsonp)
+                    output_json(prefix, output_dir, corr)
+                    filenames.append(prefix + ".jsonp")
 
             else: ## End of summarize for using the p-values
                 corrs = []
@@ -278,10 +276,10 @@ def summarize(output_dir: str,
                     g.savefig(path.join(output_dir, prefix + ".png"))
                     plt.close(g.fig)
                         
-                    img = Image.open(path.join(output_dir, column+"_"+ko+".png"))
-                    img_byte_arr = io.BytesIO()
-                    img.save(img_byte_arr, format='PNG')
-                    img_byte_arr = base64.b64encode(img_byte_arr.getvalue()).decode("utf-8")
+                    # img = Image.open(path.join(output_dir, column+"_"+ko+".png"))
+                    # img_byte_arr = io.BytesIO()
+                    # img.save(img_byte_arr, format='PNG')
+                    # img_byte_arr = base64.b64encode(img_byte_arr.getvalue()).decode("utf-8")
 
                     csv_path = os.path.join(output_dir, prefix + ".csv")
                                     
@@ -298,13 +296,13 @@ def summarize(output_dir: str,
                         output["ko"] = ko
                 
                     ## Save the image
-                    jsonp = prefix + ".jsonp"
-                    output_json(prefix, output_dir, jsonp, img_byte_arr, output)
-                    filenames.append(jsonp)
+                    output_json(prefix, output_dir, output)
+                    filenames.append(prefix + ".jsonp")
                     
                            
 
                     ## Correlation output per KO per dataset
+                    prefix  = prefix + "_corr"
                     if tbl_len > 1:
                         ## If multiple tables, append scatterplot
                         corrtbl = pd.concat([table.loc[all_samples, ko] for table in tables], axis=1)
@@ -323,7 +321,7 @@ def summarize(output_dir: str,
                         plt.tight_layout()
 
                         figs = fig.get_figure()
-                        figs.savefig(path.join(output_dir, prefix + "_heatmap.png"))
+                        figs.savefig(path.join(output_dir, prefix + ".png"))
                         plt.close(fig)
                     else:
                         ## Only heatmap
@@ -337,22 +335,20 @@ def summarize(output_dir: str,
                         plt.figure()
                         fig = sns.heatmap(corr, annot=True)
                         figs = fig.get_figure()
-                        figs.savefig(path.join(output_dir, prefix + "_heatmap.png"))
+                        figs.savefig(path.join(output_dir, prefix + ".png"))
                         plt.close(fig.fig)
                     
-                    csv_path = os.path.join(output_dir, prefix + "_corr.csv")                    
+                    csv_path = os.path.join(output_dir, prefix + ".csv")                    
                     corrtbl.to_csv(csv_path)
 
-                    img = Image.open(path.join(output_dir, column+"_"+ko+"_heatmap.png"))
-                    img_byte_arr = io.BytesIO()
-                    img.save(img_byte_arr, format='PNG')
-                    img_byte_arr = base64.b64encode(img_byte_arr.getvalue()).decode("utf-8")
+                    # img = Image.open(path.join(output_dir, column+"_"+ko+"_heatmap.png"))
+                    # img_byte_arr = io.BytesIO()
+                    # img.save(img_byte_arr, format='PNG')
+                    # img_byte_arr = base64.b64encode(img_byte_arr.getvalue()).decode("utf-8")
 
                     ## Save the image
-                    prefix = prefix + "_corr"
-                    jsonp = prefix + ".jsonp"
-                    output_json(prefix, output_dir, jsonp, img_byte_arr, corr)
-                    filenames.append(jsonp)
+                    output_json(prefix, output_dir, corr)
+                    filenames.append(prefix + ".jsonp")
                     
                     ## Keep the correlation values
                     corr = corr.where(np.triu(np.ones(corr.shape)).astype(bool))
@@ -379,15 +375,14 @@ def summarize(output_dir: str,
                 fig.savefig(path.join(output_dir, "whole_corr.png"))
                 plt.close()
                 
-                img = Image.open(path.join(output_dir, "whole_corr.png"))
-                img_byte_arr = io.BytesIO()
-                img.save(img_byte_arr, format='PNG')
-                img_byte_arr = base64.b64encode(img_byte_arr.getvalue()).decode("utf-8")
+                # img = Image.open(path.join(output_dir, "whole_corr.png"))
+                # img_byte_arr = io.BytesIO()
+                # img.save(img_byte_arr, format='PNG')
+                # img_byte_arr = base64.b64encode(img_byte_arr.getvalue()).decode("utf-8")
                 
                 prefix= "whole_corr"
-                jsonp = prefix+".jsonp"
-                output_json(prefix, output_dir, jsonp, img_byte_arr, corsum)
-                filenames.append(jsonp)
+                output_json(prefix, output_dir, corsum)
+                filenames.append(prefix + ".jsonp")
 
                 if cor_thresh is not None:
                     ## Subset to between dataset correlation
@@ -401,23 +396,23 @@ def summarize(output_dir: str,
                     csv_path = os.path.join(output_dir, "cor_thresh_"+str(cor_thresh)+".csv")
                     outp.to_csv(csv_path)
 
+                    prefix = "cor_thresh_"+str(cor_thresh)
+
                     plt.figure(figsize=(12,10))
                     g = sns.barplot(kostat, x="ko", y="mean")
                     plt.xticks(rotation=45)
                     plt.tight_layout()
                     fig = g.get_figure()
-                    fig.savefig(path.join(output_dir, "corr_thresh.png"))
+                    fig.savefig(path.join(output_dir, prefix+".png"))
                     plt.close()
                     
-                    img = Image.open(path.join(output_dir, "corr_thresh.png"))
-                    img_byte_arr = io.BytesIO()
-                    img.save(img_byte_arr, format='PNG')
-                    img_byte_arr = base64.b64encode(img_byte_arr.getvalue()).decode("utf-8")
+                    # img = Image.open(path.join(output_dir, "corr_thresh.png"))
+                    # img_byte_arr = io.BytesIO()
+                    # img.save(img_byte_arr, format='PNG')
+                    # img_byte_arr = base64.b64encode(img_byte_arr.getvalue()).decode("utf-8")
 
-                    pref = "cor_thresh_"+str(cor_thresh)
-                    jsonp = pref + ".jsonp"
-                    output_json(pref, output_dir, jsonp, img_byte_arr, outp)
-                    filenames.append(jsonp)
+                    output_json(prefix, output_dir, outp)
+                    filenames.append(prefix + ".jsonp")
         
     index = os.path.join(TEMPLATES, 'index.html')
     q2templates.render(index, output_dir, context={

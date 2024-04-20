@@ -7,7 +7,7 @@ setup(
     packages=find_packages(),
     author="Noriaki Sato",
     author_email="nori@hgc.jp",
-    description="QIIME2 plugin for visualizing and analyzing pathway information based on gene abundances.",
+    description="QIIME2 plugin for analyzing biological pathway information based on gene family abundances.",
     license='BSD-3-Clause',
     url="https://github.com/noriakis/q2-pathway",
     entry_points={

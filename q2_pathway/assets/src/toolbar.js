@@ -10,7 +10,8 @@ export function addColumnPicker(row, columns, selectedColumn) {
     .on('change', function changeColumn() {
       const body = select('#main');
       const data = d[this.selectedIndex];
-      document.getElementById("ItemPreview").src = "data:image/png;base64," + data.image;
+      // document.getElementById("ItemPreview").src = "data:image/png;base64," + data.image;
+      document.getElementById("ItemPreview").src = data.image;
       showKOTable(body, data);
     })
     .selectAll('option')
@@ -21,7 +22,4 @@ export function addColumnPicker(row, columns, selectedColumn) {
       .text(d => d)
       .property('selected', d => (d === selectedColumn));
   return grp;
-}
-
-export function addDownloadLinks(sel, svg) {
 }

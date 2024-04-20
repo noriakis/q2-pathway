@@ -77,6 +77,7 @@ def kegg(output_dir: str, ko_table: pd.DataFrame, metadata: qiime2.Metadata, pat
                 valdics[prefix] = valdic
             else:
                 ## We should invert the levels when using effect
+                sort_col = "wi.ep"
                 prefix = column+"_"+level2+"_vs_"+level1
                 prefixes.append(prefix)
                 ## ALDEx2
@@ -95,9 +96,9 @@ def kegg(output_dir: str, ko_table: pd.DataFrame, metadata: qiime2.Metadata, pat
                 try:
                     res = subprocess.run(cmd, check=True)
                 except subprocess.CalledProcessError as e:
-                    raise ValueError("ALDEx2 cannot be performed")
+                    raise ValueError("ALDEx2 cannot be performed due to the error in R script.")
                 res = pd.read_csv(aldexpath, sep="\t", index_col=0, header=0)
-                
+
                 ## Better to select by the users
                 val = res["effect"]
                 val.index = ["ko:"+i for i in val.index.values]
@@ -105,17 +106,20 @@ def kegg(output_dir: str, ko_table: pd.DataFrame, metadata: qiime2.Metadata, pat
                 valdics[prefix] = valdic
                 
                 ## Read output image
-                gsea_image = Image.open(aldeximagepath)
-                img_byte_arr = io.BytesIO()
-                gsea_image.save(img_byte_arr, format='PNG')
-                img_byte_arr = base64.b64encode(img_byte_arr.getvalue()).decode("utf-8")
+                # gsea_image = Image.open(aldeximagepath)
+                # img_byte_arr = io.BytesIO()
+                # gsea_image.save(img_byte_arr, format='PNG')
+                # img_byte_arr = base64.b64encode(img_byte_arr.getvalue()).decode("utf-8")
                 
                 aldex2_out = prefix + "_aldex2_res"
                 ## Save the aldex2 out
                 jsonp = aldex2_out + ".jsonp"
+
+                res = res.sort_values(by=sort_col).head(50)
+
                 with open(os.path.join(output_dir, jsonp), 'w') as fh:
                     fh.write('load_data("%s",' % aldex2_out)
-                    json.dump(img_byte_arr, fh)
+                    json.dump("aldex2_res_"+prefix+".png", fh)
                     fh.write(",'")
                     table = q2templates.df_to_html(res, escape=False)
                     fh.write(table.replace('\n', '').replace("'", "\\'"))
@@ -142,10 +146,11 @@ def kegg(output_dir: str, ko_table: pd.DataFrame, metadata: qiime2.Metadata, pat
                                      two_slope=False, colors=["blue","red"],
                                      width=4, label="T-statistic")
             kegg_map_image = Image.fromarray(kegg_map_image2)
+            kegg_map_image.save(prefix+"_"+pathway_id+".png")
 
-            img_byte_arr = io.BytesIO()
-            kegg_map_image.save(img_byte_arr, format='PNG')
-            img_byte_arr = base64.b64encode(img_byte_arr.getvalue()).decode("utf-8")
+            # img_byte_arr = io.BytesIO()
+            # kegg_map_image.save(img_byte_arr, format='PNG')
+            # img_byte_arr = base64.b64encode(img_byte_arr.getvalue()).decode("utf-8")
 
             csv_path = os.path.join(output_dir, prefix + ".csv")
             output.to_csv(csv_path)
@@ -155,7 +160,7 @@ def kegg(output_dir: str, ko_table: pd.DataFrame, metadata: qiime2.Metadata, pat
             jsonp = prefix + ".jsonp"
             with open(os.path.join(output_dir, jsonp), 'w') as fh:
                 fh.write('load_data("%s",' % prefix)
-                json.dump(img_byte_arr, fh)
+                json.dump(prefix+"_"+pathway_id+".png", fh)
                 fh.write(",'")
                 table = q2templates.df_to_html(output, escape=False)
                 fh.write(table.replace('\n', '').replace("'", "\\'"))
@@ -192,16 +197,17 @@ def kegg(output_dir: str, ko_table: pd.DataFrame, metadata: qiime2.Metadata, pat
                                      two_slope=False, colors=["blue","red"],
                                      width=4, label="T-statistic")
         kegg_map_image = Image.fromarray(kegg_map_image2)
+        kegg_map_image.save(column+"_"+pathway_id+".png")
 
-        img_byte_arr = io.BytesIO()
-        kegg_map_image.save(img_byte_arr, format='PNG')
-        img_byte_arr = base64.b64encode(img_byte_arr.getvalue()).decode("utf-8")
-             
+        # img_byte_arr = io.BytesIO()
+        # kegg_map_image.save(img_byte_arr, format='PNG')
+        # img_byte_arr = base64.b64encode(img_byte_arr.getvalue()).decode("utf-8")
+        
         ## Save the whole condition image
         jsonp = column + ".jsonp"
         with open(os.path.join(output_dir, jsonp), 'w') as fh:
             fh.write('load_data("%s",' % column)
-            json.dump(img_byte_arr, fh)
+            json.dump(column+"_"+pathway_id+".png", fh)
             fh.write(",'")
             table = q2templates.df_to_html(output, escape=False)
             fh.write(table.replace('\n', '').replace("'", "\\'"))
@@ -327,17 +333,21 @@ def gsea(output_dir: str, tables: pd.DataFrame, metadata: qiime2.Metadata, tss: 
                     val.to_csv(os.path.join(output_dir, "values_"+prefix+".tsv"), sep="\t", header=None)
                     
                     ## Read output image
-                    gsea_image = Image.open(aldeximagepath)
-                    img_byte_arr = io.BytesIO()
-                    gsea_image.save(img_byte_arr, format='PNG')
-                    img_byte_arr = base64.b64encode(img_byte_arr.getvalue()).decode("utf-8")
+                    # gsea_image = Image.open(aldeximagepath)
+                    # img_byte_arr = io.BytesIO()
+                    # gsea_image.save(img_byte_arr, format='PNG')
+                    # img_byte_arr = base64.b64encode(img_byte_arr.getvalue()).decode("utf-8")
                     
                     aldex2_out = prefix + "_aldex2_res"
                     ## Save the aldex2 out
                     jsonp = aldex2_out + ".jsonp"
+
+                    sort_col="wi.ep"
+                    res = res.sort_values(by=sort_col).head(50)
+
                     with open(os.path.join(output_dir, jsonp), 'w') as fh:
                         fh.write('load_data("%s",' % aldex2_out)
-                        json.dump(img_byte_arr, fh)
+                        json.dump("aldex2_res_"+prefix+".png", fh)
                         fh.write(",'")
                         table = q2templates.df_to_html(res, escape=False)
                         fh.write(table.replace('\n', '').replace("'", "\\'"))
@@ -356,10 +366,10 @@ def gsea(output_dir: str, tables: pd.DataFrame, metadata: qiime2.Metadata, tss: 
                     raise ValueError("GSEA cannot be performed")
                 
                 ## Read output image
-                gsea_image = Image.open(path.join(output_dir, "gsea_res_"+prefix+".png"))
-                img_byte_arr = io.BytesIO()
-                gsea_image.save(img_byte_arr, format='PNG')
-                img_byte_arr = base64.b64encode(img_byte_arr.getvalue()).decode("utf-8")
+                # gsea_image = Image.open(path.join(output_dir, "gsea_res_"+prefix+".png"))
+                # img_byte_arr = io.BytesIO()
+                # gsea_image.save(img_byte_arr, format='PNG')
+                # img_byte_arr = base64.b64encode(img_byte_arr.getvalue()).decode("utf-8")
                 
                 gseares = pd.read_csv(path.join(output_dir, "gsea_res_"+prefix+".tsv"), sep="\t", index_col=0, header=0)
                 if module:
@@ -372,7 +382,7 @@ def gsea(output_dir: str, tables: pd.DataFrame, metadata: qiime2.Metadata, tss: 
                 ## The same structure as kegg
                 with open(os.path.join(output_dir, jsonp), 'w') as fh:
                     fh.write('load_data("%s",' % prefix)
-                    json.dump(img_byte_arr, fh)
+                    json.dump("gsea_res_"+prefix+".png", fh)
                     fh.write(",'")
                     table = q2templates.df_to_html(gseares, escape=False)
                     fh.write(table.replace('\n', '').replace("'", "\\'"))

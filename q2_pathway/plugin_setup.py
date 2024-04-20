@@ -12,10 +12,10 @@ plugin = Plugin(
     version="2024.2",
     website='https://github.com/noriakis/q2-pathway',
     package='q2_pathway',
-    description=('QIIME2 plugin for visualizing and analyzing pathway information based on gene abundances.'),
-    short_description='Visualize KEGG PATHWAY.',
+    description=('QIIME2 plugin for analyzing biological pathway information based on gene family abundances.'),
+    short_description='Analyze biological pathway information',
     citations=[citations['Sato2023Bioinformatics'], citations['Kanehisa2000NAR'], citations["Narayan2020BMCGenomics"],
-               citations['Fernandes2013PLOSOne']]
+               citations['Fernandes2013PLOSOne'], citations['Wemheuer2020EnvMicro']]
 )
 
 ## kegg
