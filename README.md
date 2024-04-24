@@ -62,7 +62,7 @@ qiime pathway summarize \
     --o-visualization vis_output
 ```
 
-`kegg` module is implemented for visualization of KEGG PATHWAY images colored by the statistics calculated from comparing the categorical variables in the metadata.`
+`kegg` module is implemented for visualization of KEGG PATHWAY images colored by the statistics calculated from comparing the categorical variables in the metadata. The plugin uses `pykegg` to produce the images.
 
 ```shell
 qiime pathway kegg \
