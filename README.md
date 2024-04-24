@@ -9,15 +9,23 @@ QIIME 2 plugin for analyzing gene family abundances and biological pathway infor
 
 ## Installation
 
-After activating the QIIME 2 environment, ALDEx2 shuold be installed if you are to use the statistics from the package.
+After activating the QIIME 2 environment:
+
+```shell
+mamba install -c noriakisato -c bioconda q2-pathway
+```
+
+`ALDEx2` shuold be installed if you are to use the statistics from the package:
 
 ```r
 install.packages("BiocManager")
 BiocManager::install("ALDEx2")
 ```
 
+If `kegg` module is to be used, `pykegg` must be installed:
+
 ```shell
-mamba install -c noriakisato q2-pathway
+pip install pykegg
 ```
 
 ## q2-pathway

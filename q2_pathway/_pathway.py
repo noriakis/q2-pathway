@@ -130,9 +130,9 @@ def kegg(output_dir: str, ko_table: pd.DataFrame, metadata: qiime2.Metadata, pat
 
             nodes = pykegg.append_colors_continuous_values(nodes, valdic,
                     new_color_column=prefix, two_slope=False, node_name_column="name", delim=" ",
-                    colors=["blue","red"], orig_value="tstat_"+prefix)
+                    colors=[low_color, high_color], orig_value="stat_"+prefix)
 
-            output = nodes.loc[:,["name","tstat_"+prefix]]
+            output = nodes.loc[:,["name","stat_"+prefix]]
             if map_ko:
                 output["description"] = output["name"].apply(lambda x: " ".join([kodic[q] for q in x.split(" ")]))
 
@@ -143,10 +143,10 @@ def kegg(output_dir: str, ko_table: pd.DataFrame, metadata: qiime2.Metadata, pat
             kegg_map_image2 = pykegg.append_legend(kegg_map_image1,
                                      min_value=np.nanmin([valdic[i] for i in valdic.keys()]),
                                      max_value=np.nanmax([valdic[i] for i in valdic.keys()]),
-                                     two_slope=False, colors=["blue","red"],
-                                     width=4, label="T-statistic")
+                                     two_slope=False, colors=[low_color, high_color],
+                                     width=4, label="Statistics")
             kegg_map_image = Image.fromarray(kegg_map_image2)
-            kegg_map_image.save(prefix+"_"+pathway_id+".png")
+            kegg_map_image.save(os.path.join(output_dir, prefix+"_"+pathway_id+".png"))
 
             # img_byte_arr = io.BytesIO()
             # kegg_map_image.save(img_byte_arr, format='PNG')
@@ -170,14 +170,14 @@ def kegg(output_dir: str, ko_table: pd.DataFrame, metadata: qiime2.Metadata, pat
             filenames.append(jsonp)
 
         ## Concat all the values
-        minval = np.nanmin(nodes.loc[:, ["tstat_"+p for p in prefixes]].values)
-        maxval = np.nanmax(nodes.loc[:, ["tstat_"+p for p in prefixes]].values)
+        minval = np.nanmin(nodes.loc[:, ["stat_"+p for p in prefixes]].values)
+        maxval = np.nanmax(nodes.loc[:, ["stat_"+p for p in prefixes]].values)
         for p in prefixes:
             nodes = pykegg.append_colors_continuous_values(nodes, valdics[p],
                     new_color_column=p, two_slope=False, node_name_column="name", delim=" ",
-                    colors=["blue","red"], orig_value="tstat_"+p, fix_min=minval, fix_max=maxval)
+                    colors=[low_color, high_color], orig_value="stat_"+p, fix_min=minval, fix_max=maxval)
         
-        output = nodes.loc[:,["name"]+["tstat_"+p for p in prefixes]]
+        output = nodes.loc[:,["name"]+["stat_"+p for p in prefixes]]
         csv_path = os.path.join(output_dir, column + ".csv")
         output.to_csv(csv_path)
 
@@ -195,9 +195,9 @@ def kegg(output_dir: str, ko_table: pd.DataFrame, metadata: qiime2.Metadata, pat
                                      min_value=minval,
                                      max_value=maxval,
                                      two_slope=False, colors=["blue","red"],
-                                     width=4, label="T-statistic")
+                                     width=4, label="Statistics")
         kegg_map_image = Image.fromarray(kegg_map_image2)
-        kegg_map_image.save(column+"_"+pathway_id+".png")
+        kegg_map_image.save(os.path.join(output_dir, column+"_"+pathway_id+".png"))
 
         # img_byte_arr = io.BytesIO()
         # kegg_map_image.save(img_byte_arr, format='PNG')
