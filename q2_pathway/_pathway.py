@@ -32,6 +32,8 @@ def kegg(
 ) -> None:
     if tss:
         ko_table = ko_table.apply(lambda x: x / sum(x), axis=1)
+        if method == "aldex2":
+            raise ValueError("ALDEx2 is for the count data.")
 
     ## Filter columns
     metadata = metadata.filter_ids(ko_table.index)
@@ -88,7 +90,7 @@ def kegg(
                 val.index = ["ko:" + i for i in ko_table.columns]
                 valdic = val.to_dict()
                 valdics[prefix] = valdic
-            else:
+            elif method == "aldex2":
                 ## We should invert the levels when using effect
                 sort_col = "wi.ep"
                 prefix = column + "_" + level2 + "_vs_" + level1
@@ -147,6 +149,8 @@ def kegg(
                     fh.write(quote("aldex2_res_" + prefix + ".tsv"))
                     fh.write("');")
                 filenames.append(jsonp)
+            else:
+                raise ValueError("Method should be set to t or aldex2")
 
             nodes = pykegg.append_colors_continuous_values(
                 nodes,
@@ -312,6 +316,8 @@ def gsea(
 ):
     if tss:
         tables = [table.apply(lambda x: x / sum(x), axis=1) for table in tables]
+        if method == "aldex2":
+            raise ValueError("ALDEx2 is for the count data.")
 
     filenames = []
 
@@ -404,7 +410,7 @@ def gsea(
                         sep="\t",
                         header=None,
                     )
-                else:
+                elif method == "aldex2":
                     ## We should invert the levels when using effect
                     prefix = (
                         dataset_name + "_" + column + "_" + level2 + "_vs_" + level1
@@ -467,6 +473,9 @@ def gsea(
                         fh.write(quote("aldex2_res_" + prefix + ".tsv"))
                         fh.write("');")
                     filenames.append(jsonp)
+
+                else:
+                    raise ValueError("Method should be set to t or aldex2")
 
                 ## Perform GSEA
                 if bg != "all":
