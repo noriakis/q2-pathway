@@ -167,3 +167,16 @@ plugin.methods.register_function(
     name="Aggregate family abundance to high order abundance",
     description=("Aggregate family abundance to high order abundance"),
 )
+
+plugin.visualizers.register_function(
+    function=q2_pathway.install,
+    inputs={},
+    input_descriptions={},
+    parameters={"type": Str},
+    parameter_descriptions={
+        "type": "which library to install: tax4fun2"
+    },
+    name="Install the library and database",
+    description=("Install the library and database"),
+)
+

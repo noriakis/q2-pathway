@@ -28,6 +28,7 @@ requirements:
     - numpy
     - scipy
     - pandas
+    - requests
 
   about:
     home: https://github.com/noriakis/q2-pathway

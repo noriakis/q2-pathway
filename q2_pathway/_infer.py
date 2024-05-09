@@ -3,11 +3,48 @@ import pandas as pd
 import subprocess
 from tempfile import TemporaryDirectory
 import pkg_resources
+import requests
 
 TEMPLATES = pkg_resources.resource_filename("q2_pathway", "assets")
 
+def install(
+    output_dir: str,
+    type: str = "tax4fun2",
+    ) -> None:
+    """Currently, `infer` module has a parameter `reference_database` for specifying
+    Tax4Fun2 database path, but the path specification in the parameter should be avoided.
+    This function downloads the archive and database from Zenodo, and install the package
+    and places the database on plugin directory, which can subsequently be used within 
+    the infer function without specifying the path. This is currently implemented as 
+    visualizer. Probably output the files as QZV and uses the file for the subsequent analysis?
+    """
+    print("1. Downloading Tax4Fun2 archive...")
+    t4f2_url = "https://zenodo.org/records/10035668/files/Tax4Fun2_1.1.5.tar.gz"
+    fn = path.join(TEMPLATES, "Tax4Fun2_1.1.5.tar.gz")
+    res = requests.get(t4f2_url, stream=True)
+    if res.status_code == 200:
+        with open(fn, 'wb') as file:
+            for chunk in res:
+                file.write(chunk)
+                
+    ## Install Tax4Fun2
+    print("2. Installing Tax4Fun2...")
+    cmd = ["R", "CMD", "INSTALL", fn]
+    try:
+        subprocess.run(cmd, check=True)
+    except subprocess.CalledProcessError as _:
+        raise ValueError("Error installing tax4fun2.")
 
-## Option to use q2-gcn-norm for normalizing by rrnDB
+    print("3. Downloading Tax4Fun2 DB...")        
+    t4f2_db_url = "https://zenodo.org/records/10035668/files/Tax4Fun2_ReferenceData_v2.tar.gz"
+    fn = path.join(TEMPLATES, "Tax4Fun2_ReferenceData_v2.tar.gz")
+    res = requests.get(t4f2_db_url, stream=True)
+    if res.status_code == 200:
+        with open(fn, 'wb') as file:
+            for chunk in res:
+                file.write(chunk)
+
+
 def infer(
     sequences: pd.Series,
     seq_table: pd.DataFrame,
@@ -17,6 +54,7 @@ def infer(
     algorithm: str = "piphillin",
     reference_database: str = None,
 ) -> pd.DataFrame:
+    ## [Idea] Option to use q2-gcn-norm for normalizing by rrnDB
     reference_sequences = path.join(TEMPLATES, "16S_seqs.fasta.gz")
     cn_table = path.join(TEMPLATES, "ko_copynum.tsv.gz")
     cn_16s_table = path.join(TEMPLATES, "16S_cn.tsv.gz")
