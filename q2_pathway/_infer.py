@@ -4,6 +4,7 @@ import subprocess
 from tempfile import TemporaryDirectory
 import pkg_resources
 import requests
+import hashlib
 
 TEMPLATES = pkg_resources.resource_filename("q2_pathway", "assets")
 
@@ -17,10 +18,16 @@ def install(
     and places the database on plugin directory, which can subsequently be used within 
     the infer function without specifying the path. This is currently implemented as 
     visualizer. Probably output the files as QZV and uses the file for the subsequent analysis?
+    Currently, put the file path and SHA256 information in QZV file.
     """
+    fns = []
+    urls = []
     print("1. Downloading Tax4Fun2 archive...")
     t4f2_url = "https://zenodo.org/records/10035668/files/Tax4Fun2_1.1.5.tar.gz"
     fn = path.join(TEMPLATES, "Tax4Fun2_1.1.5.tar.gz")
+    fns.append(fn)
+    urls.append(t4f2_url)
+
     res = requests.get(t4f2_url, stream=True)
     if res.status_code == 200:
         with open(fn, 'wb') as file:
@@ -35,14 +42,26 @@ def install(
     except subprocess.CalledProcessError as _:
         raise ValueError("Error installing tax4fun2.")
 
-    print("3. Downloading Tax4Fun2 DB...")        
-    t4f2_db_url = "https://zenodo.org/records/10035668/files/Tax4Fun2_ReferenceData_v2.tar.gz"
-    fn = path.join(TEMPLATES, "Tax4Fun2_ReferenceData_v2.tar.gz")
-    res = requests.get(t4f2_db_url, stream=True)
-    if res.status_code == 200:
-        with open(fn, 'wb') as file:
-            for chunk in res:
-                file.write(chunk)
+    # print("3. Downloading Tax4Fun2 DB...")
+    # t4f2_db_url = "https://zenodo.org/records/10035668/files/Tax4Fun2_ReferenceData_v2.tar.gz"
+    # fn = path.join(TEMPLATES, "Tax4Fun2_ReferenceData_v2.tar.gz")
+    # fns.append(fn)
+    # urls.append(t4f2_db_url)
+
+    # res = requests.get(t4f2_db_url, stream=True)
+    # if res.status_code == 200:
+    #     with open(fn, 'wb') as file:
+    #         for chunk in res:
+    #             file.write(chunk)
+
+    hashes = []
+    for fn in fns:
+        with open(fn, 'rb') as file:
+            fileData = file.read()
+            hashes.append(hashlib.sha256(fileData).hexdigest())
+
+    outpath = path.join(output_dir, "q2_pathway_t4f2_details.tsv")
+    pd.DataFrame({"url":urls, "file_path": fns, "sha256": hashes}).to_csv(outpath, sep="\t", index=False)
 
 
 def infer(
