@@ -42,17 +42,17 @@ def install(
     except subprocess.CalledProcessError as _:
         raise ValueError("Error installing tax4fun2.")
 
-    # print("3. Downloading Tax4Fun2 DB...")
-    # t4f2_db_url = "https://zenodo.org/records/10035668/files/Tax4Fun2_ReferenceData_v2.tar.gz"
-    # fn = path.join(TEMPLATES, "Tax4Fun2_ReferenceData_v2.tar.gz")
-    # fns.append(fn)
-    # urls.append(t4f2_db_url)
+    print("3. Downloading Tax4Fun2 DB...")
+    t4f2_db_url = "https://zenodo.org/records/10035668/files/Tax4Fun2_ReferenceData_v2.tar.gz"
+    fn = path.join(TEMPLATES, "Tax4Fun2_ReferenceData_v2.tar.gz")
+    fns.append(fn)
+    urls.append(t4f2_db_url)
 
-    # res = requests.get(t4f2_db_url, stream=True)
-    # if res.status_code == 200:
-    #     with open(fn, 'wb') as file:
-    #         for chunk in res:
-    #             file.write(chunk)
+    res = requests.get(t4f2_db_url, stream=True)
+    if res.status_code == 200:
+        with open(fn, 'wb') as file:
+            for chunk in res:
+                file.write(chunk)
 
     hashes = []
     for fn in fns:
