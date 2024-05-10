@@ -97,8 +97,8 @@ def kegg(
                 prefixes.append(prefix)
                 ## ALDEx2
                 ## This will take time if you have many KOs across many metadata
-                metapath = path.join(TEMPLATES, "meta_aldex2.tsv")
-                kotablepath = path.join(TEMPLATES, "ko_table.tsv")
+                metapath = path.join(output_dir, "meta_aldex2.tsv")
+                kotablepath = path.join(output_dir, "ko_table.tsv")
                 aldexpath = path.join(output_dir, "aldex2_res_" + prefix + ".tsv")
                 aldeximagepath = path.join(output_dir, "aldex2_res_" + prefix + ".png")
 
@@ -417,8 +417,8 @@ def gsea(
                     )
                     ## ALDEx2
                     ## This will take time if you have many KOs across many metadata
-                    metapath = path.join(TEMPLATES, "meta_aldex2.tsv")
-                    kotablepath = path.join(TEMPLATES, "ko_table.tsv")
+                    metapath = path.join(output_dir, "meta_aldex2.tsv")
+                    kotablepath = path.join(output_dir, "ko_table.tsv")
                     aldexpath = path.join(output_dir, "aldex2_res_" + prefix + ".tsv")
                     aldeximagepath = path.join(
                         output_dir, "aldex2_res_" + prefix + ".png"
