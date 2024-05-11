@@ -173,9 +173,7 @@ plugin.visualizers.register_function(
     inputs={},
     input_descriptions={},
     parameters={"type": Str},
-    parameter_descriptions={
-        "type": "which library to install: tax4fun2"
-    },
+    parameter_descriptions={"type": "which library to install: tax4fun2"},
     name="Install the library and database",
     description=("Install the library and database"),
 )
