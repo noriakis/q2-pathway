@@ -1,10 +1,12 @@
-from os import path
+from os import path, rename
 import pandas as pd
 import subprocess
 from tempfile import TemporaryDirectory
 import pkg_resources
 import requests
 import hashlib
+import q2templates
+import shutil
 
 TEMPLATES = pkg_resources.resource_filename("q2_pathway", "assets")
 
@@ -17,8 +19,10 @@ def install(
     This function downloads the archive and database from Zenodo, and install the package
     and places the database on plugin directory, which can subsequently be used within 
     the infer function without specifying the path. This is currently implemented as 
-    visualizer. Probably output the files as QZV and uses the file for the subsequent analysis?
-    Currently, put the file path and SHA256 information in QZV file.
+    visualizer. Output the files as QZV and uses the file for the subsequent analysis?
+    Currently, put the file path and SHA256 information and output.
+
+    Piphillin database could be downloaded as the same way.
     """
     fns = []
     urls = []
@@ -61,8 +65,22 @@ def install(
             hashes.append(hashlib.sha256(fileData).hexdigest())
 
     outpath = path.join(output_dir, "q2_pathway_t4f2_details.tsv")
-    pd.DataFrame({"url":urls, "file_path": fns, "sha256": hashes}).to_csv(outpath, sep="\t", index=False)
+    t4f2df = pd.DataFrame({"url":urls, "file_path": fns, "sha256": hashes})
+    t4f2df.to_csv(outpath, sep="\t", index=False)
 
+    download_link= '<div class="container-fluid" id="main">'+'<a href="q2_pathway_t4f2_details.tsv">'+'Download file information as TSV'+'</a>'+'</div>'
+
+    with open(path.join(output_dir, "index.html"), "w") as fh:
+        fh.write('{% extends "base.html" %}')
+        fh.write('{% block content %}')
+        fh.write(download_link)
+        table = q2templates.df_to_html(t4f2df, escape=False)
+        fh.write(table.replace("\n", "").replace("'", "\\'"))
+        fh.write('{% endblock %}')
+    q2templates.render(
+        path.join(output_dir, "index.html"),
+        output_dir
+    )
 
 def infer(
     sequences: pd.Series,
@@ -70,8 +88,7 @@ def infer(
     threads: int = 1,
     full: bool = False,
     pct_id: float = 0.99,
-    algorithm: str = "piphillin",
-    reference_database: str = None,
+    algorithm: str = "piphillin"
 ) -> pd.DataFrame:
     ## [Idea] Option to use q2-gcn-norm for normalizing by rrnDB
     reference_sequences = path.join(TEMPLATES, "16S_seqs.fasta.gz")
@@ -134,9 +151,10 @@ def infer(
         elif algorithm == "tax4fun2":
             ## Although the input filepath is discouraged, the Tax4Fun2 database is structured
             ## inside the archive and cannot be properly converted to QZA.
-            if reference_database is None:
+            db = path.join(TEMPLATES, "Tax4Fun2_ReferenceData_v2.tar.gz")
+            if not path.isfile(db):
                 raise ValueError(
-                    "Please provide Tax4Fun2 default database path to `reference_database`."
+                    "Tax4Fun2 default database file not found in library directory. Perhaps run `qiime2 pathway install`."
                 )
             cmd = [
                 "Rscript",
@@ -144,7 +162,7 @@ def infer(
                 temp_dir,
                 "rep_seqs.fna",  ## rep-seqs
                 "seqtab.txt",
-                reference_database,
+                db,
                 str(pct_id),
                 str(threads),
             ]

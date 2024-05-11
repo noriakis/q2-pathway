@@ -138,7 +138,7 @@ plugin.methods.register_function(
         "full": Bool,
         "pct_id": Float,
         "algorithm": Str,
-        "reference_database": Str,
+        # "reference_database": Str,
     },
     parameter_descriptions={
         "threads": "The number of threads",
@@ -148,7 +148,7 @@ plugin.methods.register_function(
         "full": "Output the full stratified table",
         "pct_id": "Percent of identity, default to 0.99",
         "algorithm": "`piphillin` or `tax4fun2`, defaul to `piphillin`",
-        "reference_database": "if `tax4fun2`, provide path to the default database",
+        # "reference_database": "if `tax4fun2`, provide path to the default database",
     },
     name="Run inferring algorithm",
     description=("Run inferring algorithm"),
@@ -179,4 +179,3 @@ plugin.visualizers.register_function(
     name="Install the library and database",
     description=("Install the library and database"),
 )
-
