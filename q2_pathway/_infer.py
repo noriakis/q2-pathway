@@ -71,7 +71,7 @@ def install(
             hashes.append(hashlib.sha256(fileData).hexdigest())
 
     print("4. Extracting archive...")
-    cmd = ["tar", "-zxf", fn]
+    cmd = ["tar", "-zxf", fn, "-C", TEMPLATES]
     try:
         subprocess.run(cmd, check=True)
     except subprocess.CalledProcessError as _:
