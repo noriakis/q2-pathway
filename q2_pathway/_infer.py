@@ -29,6 +29,8 @@ def install(
     print("1. Downloading Tax4Fun2 archive...")
     t4f2_url = "https://zenodo.org/records/10035668/files/Tax4Fun2_1.1.5.tar.gz"
     fn = path.join(TEMPLATES, "Tax4Fun2_1.1.5.tar.gz")
+    if path.isfile(fn):
+        raise ValueError("The file is already downloaded, please remove "+ fn +" if try to proceed.")
     fns.append(fn)
     urls.append(t4f2_url)
 
@@ -51,6 +53,8 @@ def install(
         "https://zenodo.org/records/10035668/files/Tax4Fun2_ReferenceData_v2.tar.gz"
     )
     fn = path.join(TEMPLATES, "Tax4Fun2_ReferenceData_v2.tar.gz")
+    if path.isfile(fn):
+        raise ValueError("The file is already downloaded, please remove "+ fn +" if try to proceed.")
     fns.append(fn)
     urls.append(t4f2_db_url)
 
@@ -195,4 +199,4 @@ def infer(
             return ko.T
 
         else:
-            raise ValueError("Please specify appropriate algorithm name")
+            raise ValueError("Please specify appropriate algorithm name, piphillin or tax4fun2.")
