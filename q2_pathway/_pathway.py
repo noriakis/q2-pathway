@@ -33,7 +33,9 @@ def kegg(
     if tss:
         ko_table = ko_table.apply(lambda x: x / sum(x), axis=1)
         if method == "aldex2":
-            raise ValueError("ALDEx2 is for the count data.")
+            raise ValueError("ALDEx2 is for the raw count data.")
+        if method == "deseq2":
+            raise ValueError("DESeq2 is for the raw count data.")
 
     ## Filter columns
     metadata = metadata.filter_ids(ko_table.index)
@@ -149,8 +151,69 @@ def kegg(
                     fh.write(quote("aldex2_res_" + prefix + ".tsv"))
                     fh.write("');")
                 filenames.append(jsonp)
+            elif method == "deseq2":
+                ## DESeq2 processing
+                ## Probably use PyDESeq2: consider the version compatibility for conda installation
+                ## Consider prefiltering option
+                sort_col = "padj"
+                prefix = column + "_" + level1 + "_vs_" + level2
+                prefixes.append(prefix)
+                
+                metapath = path.join(output_dir, "meta_aldex2.tsv")
+                kotablepath = path.join(output_dir, "ko_table.tsv")
+                deseq2path = path.join(output_dir, "deseq2_res_" + prefix + ".tsv")
+                deseq2imagepath = path.join(output_dir, "deseq2_res_" + prefix + ".png")
+
+                ## Make two conditions
+                metadata_df_tmp = metadata_df_filt[
+                    (metadata_df_filt[column] == level1)
+                    | (metadata_df_filt[column] == level2)
+                ]
+                metadata_df_tmp.to_csv(metapath, sep="\t")
+                ko_table.to_csv(kotablepath, sep="\t")
+                cmd = [
+                    "Rscript",
+                    path.join(TEMPLATES, "perform_deseq2.R"),
+                    kotablepath,
+                    metapath,
+                    column,
+                    deseq2path,
+                    deseq2imagepath,
+                    level1,
+                    level2
+                ]
+                try:
+                    res = subprocess.run(cmd, check=True)
+                except subprocess.CalledProcessError as _:
+                    raise ValueError(
+                        "DESeq2 cannot be performed due to the error in R script."
+                    )
+                res = pd.read_csv(deseq2path, sep="\t", index_col=0, header=0)
+
+                ## Better to select by the users
+                val = res["log2FoldChange"]
+                val.index = ["ko:" + i for i in val.index.values]
+                valdic = val.to_dict()
+                valdics[prefix] = valdic
+
+                deseq2_out = prefix + "_deseq2_res"
+                ## Save the aldex2 out
+                jsonp = deseq2_out + ".jsonp"
+
+                res = res.sort_values(by=sort_col).head(50)
+
+                with open(os.path.join(output_dir, jsonp), "w") as fh:
+                    fh.write('load_data("%s",' % deseq2_out)
+                    json.dump("deseq2_res_" + prefix + ".png", fh)
+                    fh.write(",'")
+                    table = q2templates.df_to_html(res, escape=False)
+                    fh.write(table.replace("\n", "").replace("'", "\\'"))
+                    fh.write("','")
+                    fh.write(quote("deseq2_res_" + prefix + ".tsv"))
+                    fh.write("');")
+                filenames.append(jsonp)
             else:
-                raise ValueError("Method should be set to t or aldex2")
+                raise ValueError("Method should be set to t, deseq2, or aldex2")
 
             nodes = pykegg.append_colors_continuous_values(
                 nodes,
@@ -314,10 +377,15 @@ def gsea(
     tables_name: str = None,
     bg: str = "all",
 ):
+    """
+    ## [TODO] More controlling options for fgsea parameters
+    """
     if tss:
         tables = [table.apply(lambda x: x / sum(x), axis=1) for table in tables]
         if method == "aldex2":
             raise ValueError("ALDEx2 is for the count data.")
+        if method == "deseq2":
+            raise ValueError("DESeq2 is for the raw count data.")
 
     filenames = []
 
@@ -474,9 +542,72 @@ def gsea(
                         fh.write("');")
                     filenames.append(jsonp)
 
-                else:
-                    raise ValueError("Method should be set to t or aldex2")
+                elif method == "deseq2":
+                    ## DESeq2 processing
+                    ## Probably use PyDESeq2: consider the version compatibility for conda installation
+                    ## Consider prefiltering option
+                    sort_col = "padj"
+                    prefix = dataset_name + "_" + column + "_" + level1 + "_vs_" + level2
+                    
+                    metapath = path.join(output_dir, "meta_aldex2.tsv")
+                    kotablepath = path.join(output_dir, "ko_table.tsv")
+                    deseq2path = path.join(output_dir, "deseq2_res_" + prefix + ".tsv")
+                    deseq2imagepath = path.join(output_dir, "deseq2_res_" + prefix + ".png")
 
+                    ## Make two conditions
+                    metadata_df_tmp = metadata_df_filt[
+                        (metadata_df_filt[column] == level1)
+                        | (metadata_df_filt[column] == level2)
+                    ]
+                    metadata_df_tmp.to_csv(metapath, sep="\t")
+                    ko_table.to_csv(kotablepath, sep="\t")
+                    cmd = [
+                        "Rscript",
+                        path.join(TEMPLATES, "perform_deseq2.R"),
+                        kotablepath,
+                        metapath,
+                        column,
+                        deseq2path,
+                        deseq2imagepath,
+                        level1,
+                        level2
+                    ]
+                    try:
+                        res = subprocess.run(cmd, check=True)
+                    except subprocess.CalledProcessError as _:
+                        raise ValueError(
+                            "DESeq2 cannot be performed due to the error in R script."
+                        )
+                    res = pd.read_csv(deseq2path, sep="\t", index_col=0, header=0)
+
+                    ## Better to select by the users
+                    val = res["log2FoldChange"]
+                    val.index = ["ko:" + i for i in val.index.values]
+
+                    val.to_csv(
+                        os.path.join(output_dir, "values_" + prefix + ".tsv"),
+                        sep="\t",
+                        header=None,
+                    )
+
+                    deseq2_out = prefix + "_deseq2_res"
+                    ## Save the aldex2 out
+                    jsonp = deseq2_out + ".jsonp"
+
+                    res = res.sort_values(by=sort_col).head(50)
+
+                    with open(os.path.join(output_dir, jsonp), "w") as fh:
+                        fh.write('load_data("%s",' % deseq2_out)
+                        json.dump("deseq2_res_" + prefix + ".png", fh)
+                        fh.write(",'")
+                        table = q2templates.df_to_html(res, escape=False)
+                        fh.write(table.replace("\n", "").replace("'", "\\'"))
+                        fh.write("','")
+                        fh.write(quote("deseq2_res_" + prefix + ".tsv"))
+                        fh.write("');")
+                    filenames.append(jsonp)
+                else:
+                    raise ValueError("Method should be set to t, deseq2, or aldex2")
                 ## Perform GSEA
                 if bg != "all":
                     pd.Series(["ko:" + i for i in ko_table.columns]).to_csv(
