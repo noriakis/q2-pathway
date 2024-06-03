@@ -17,8 +17,9 @@ plugin = Plugin(
     citations=[
         citations["Sato2023Bioinformatics"],
         citations["Kanehisa2000NAR"],
-        citations["Narayan2020BMCGenomics"],
         citations["Fernandes2013PLOSOne"],
+        citations["Love2014GenomeBiol"],
+        citations["Narayan2020BMCGenomics"],
         citations["Wemheuer2020EnvMicro"],
     ],
 )
