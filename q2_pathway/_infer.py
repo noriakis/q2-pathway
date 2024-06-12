@@ -127,6 +127,8 @@ def infer_t4f2(
     We need a prior installation of Tax4Fun2 in the R in QIIME 2 environment.
     Download https://zenodo.org/records/10035668/files/Tax4Fun2_1.1.5.tar.gz, and run
     `R CMD INSTALL Tax4Fun2_1.1.5.tar.gz`.
+    The artifact of the database is available under GNU General Public License v3.0 or later.
+    The original files are downloaded from: https://zenodo.org/records/10035668.
     """
 
     if threads < 1:
