@@ -1,4 +1,5 @@
 from os import path
+import os
 import pandas as pd
 import subprocess
 from tempfile import TemporaryDirectory
@@ -6,7 +7,6 @@ import pkg_resources
 
 TEMPLATES = pkg_resources.resource_filename("q2_pathway", "assets")
 
-## Option to use q2-gcn-norm for normalizing by rrnDB
 def infer(
     sequences: pd.Series,
     seq_table: pd.DataFrame,
@@ -14,6 +14,11 @@ def infer(
     full: bool = False,
     pct_id: float = 0.99
 ) -> pd.DataFrame:
+    """
+    [TODO] Option to use q2-gcn-norm for normalizing by rrnDB
+    Should we separate the reference files to artifact and distribute, rather than
+    putting them in conda release?
+    """
     reference_sequences = path.join(TEMPLATES, "16S_seqs.fasta.gz")
     cn_table = path.join(TEMPLATES, "ko_copynum.tsv.gz")
     cn_16s_table = path.join(TEMPLATES, "16S_cn.tsv.gz")
@@ -113,10 +118,19 @@ def infer(
 def infer_t4f2(
     sequences: pd.Series,
     seq_table: pd.DataFrame,
-    database: Tax4Fun2Database,
+    database: str,
     threads: int = 1,
+    database_mode: str = "Ref99NR",
     pct_id: float = 0.99,
 ) -> pd.DataFrame:
+    """
+    We need a prior installation of Tax4Fun2 in the R in QIIME 2 environment.
+    Download https://zenodo.org/records/10035668/files/Tax4Fun2_1.1.5.tar.gz, and run
+    `R CMD INSTALL Tax4Fun2_1.1.5.tar.gz`.
+    """
+
+    if threads < 1:
+        raise ValueError("Thread number should be positive.")
 
     with TemporaryDirectory() as temp_dir:
         repseq = path.join(temp_dir, "rep_seqs.fna")
@@ -125,21 +139,28 @@ def infer_t4f2(
             for seqname, sequence in sequences.items():
                 print(">" + str(seqname) + "\n" + str(sequence), file=fna)
         seq_table.T.to_csv(path.join(temp_dir, "seqtab.txt"), sep="\t")
+
+        ## Needs to extract database every time (use cache)
+        excmd = [
+            "tar", "-zxf",
+            database + "/Tax4Fun2_ReferenceData_v2.tar.gz",
+            "-C", temp_dir
+            ]
+        try:
+            subprocess.run(excmd, check=True)
+        except subprocess.CalledProcessError as _:
+            raise ValueError("Error extracting database.")
    
-        from q2_pathway import T4F2DirectoryFormat
-        db = qiime2.Artifact.load(database)
-        d = db.view(T4F2DirectoryFormat)
-        db_path = d.path
-        
         cmd = [
             "Rscript",
             path.join(TEMPLATES, "perform_tax4fun2.R"),
             temp_dir,
             "rep_seqs.fna",  ## rep-seqs
             "seqtab.txt",
-            db_path,
+            path.join(temp_dir, "Tax4Fun2_ReferenceData_v2"),
             str(pct_id),
             str(threads),
+            str(database_mode)
         ]
         try:
             subprocess.run(cmd, check=True)

@@ -58,8 +58,9 @@ def summarize(
         ## Converting table should be artifact
         ## with the column name of "converted".
         ## So if shotgun profiled qza is to be read,
-        ## the index should be shotgun-ID and "converted" column
+        ## the index should be shotgun-ID and `converted` column
         ## corresponds to 16S-ID.
+        ## Or should we load directly from the `metadata` parameter?
         mapping = convert_table.to_dataframe()
         # mapping = pd.read_csv(convert, sep="\t", header=None, index_col=0)
         change = mapping["converted"].to_dict()
@@ -132,14 +133,14 @@ def summarize(
         all_cols = kop[kop[0].isin([candidate_pathway])][1].tolist()
         all_cols = list(set(all_kos) & set(all_cols))
 
-    ## Loose checking (assuming stratified table is depicted as tax1_K00001)
-    if "_" in all_cols[0]:
-        strat = True
-        ko_table = tables[0]
-
+    ## Loose checking for stratified (assuming stratified table is shown as tax1_K00001)
     ## As q2-picrust2 does not produce stratified table by default
     ## What should be the format for ths stratified output?
     ## Currently, the correlation will not be produced for the stratified output.
+    ## Also, only the first table will be summarized.
+    if "_" in all_cols[0]:
+        strat = True
+        ko_table = tables[0]
 
     if strat:
         # all_taxs = list(set([i.split("_")[0] for i in all_cols]))
@@ -191,7 +192,9 @@ def summarize(
                 ## Per-KO stratified abundance
 
     else:  ## If un-stratified
-        all_kos = list(set(all_cols))
+        # all_kos = list(set(all_cols))
+        all_kos = all_cols
+
         for column in metadata_df.columns:
             metadata_df_filt = metadata_df[metadata_df[column].notna()]
             levels = metadata_df_filt[column].unique()

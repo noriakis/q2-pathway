@@ -4,10 +4,10 @@ from q2_types.feature_data import FeatureData, Sequence
 import q2_pathway
 
 from q2_pathway import (
-    T4F2Database,
+    T4F2Database, T4F2DatabaseFileFormat,
     T4F2DatabaseFormat)
-# import importlib
 
+import importlib
 
 citations = Citations.load("citations.bib", package="q2_pathway")
 
@@ -34,7 +34,7 @@ plugin = Plugin(
 plugin.register_semantic_types(T4F2Database)
 
 # Register formats
-plugin.register_formats(T4F2DatabaseFormat)
+plugin.register_formats(T4F2DatabaseFormat, T4F2DatabaseFileFormat)
 
 # Define and register new ArtifactClass
 plugin.register_artifact_class(T4F2Database,
@@ -180,11 +180,13 @@ plugin.methods.register_function(
     outputs=[("table", FeatureTable[Frequency])],
     parameters={
         "threads": Int,
-        "pct_id": Float
+        "pct_id": Float,
+        "database_mode": Str
     },
     parameter_descriptions={
         "threads": "The number of threads",
         "pct_id": "Percent of identity, default to 0.99",
+        "database_mode": "Ref99NR or Ref100NR"
     },
     name="Run Tax4Fun2 algorithm",
     description=("Run Tax4Fun2 algorithm"),
@@ -204,4 +206,4 @@ plugin.methods.register_function(
     description=("Aggregate family abundance to high order abundance"),
 )
 
-# importlib.import_module('q2_pathway._transformers')
+importlib.import_module('q2_pathway._transformers')
