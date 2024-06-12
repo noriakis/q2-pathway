@@ -3,6 +3,12 @@ from q2_types.feature_table import FeatureTable, Frequency
 from q2_types.feature_data import FeatureData, Sequence
 import q2_pathway
 
+from q2_pathway import (
+    T4F2Database,
+    T4F2DatabaseFormat)
+# import importlib
+
+
 citations = Citations.load("citations.bib", package="q2_pathway")
 
 plugin = Plugin(
@@ -23,6 +29,17 @@ plugin = Plugin(
         citations["Wemheuer2020EnvMicro"],
     ],
 )
+
+# Register semantic types
+plugin.register_semantic_types(T4F2Database)
+
+# Register formats
+plugin.register_formats(T4F2DatabaseFormat)
+
+# Define and register new ArtifactClass
+plugin.register_artifact_class(T4F2Database,
+                               T4F2DatabaseFormat,
+                               description="A Tax4Fun2 database directory.")
 
 ## kegg
 plugin.visualizers.register_function(
@@ -137,9 +154,7 @@ plugin.methods.register_function(
         # 'cn_table': Str,
         # 'cn_16s_table': Str,
         "full": Bool,
-        "pct_id": Float,
-        "algorithm": Str,
-        "reference_database": Str,
+        "pct_id": Float
     },
     parameter_descriptions={
         "threads": "The number of threads",
@@ -147,12 +162,32 @@ plugin.methods.register_function(
         # 'cn_table': 'gene copy number table, default to the preset database.',
         # 'cn_16s_table': '16S gene copy number table, default to the preset database.',
         "full": "Output the full stratified table",
-        "pct_id": "Percent of identity, default to 0.99",
-        "algorithm": "`piphillin` or `tax4fun2`, defaul to `piphillin`",
-        "reference_database": "if `tax4fun2`, provide path to the default database",
+        "pct_id": "Percent of identity, default to 0.99"
     },
-    name="Run inferring algorithm",
-    description=("Run inferring algorithm"),
+    name="Run Piphillin algorithm",
+    description=("Run Piphillin algorithm"),
+)
+
+## infer_t4f2
+plugin.methods.register_function(
+    function=q2_pathway.infer_t4f2,
+    inputs={"sequences": FeatureData[Sequence], "seq_table": FeatureTable[Frequency], "database": T4F2Database},
+    input_descriptions={
+        "sequences": "Representative sequences to be profiled",
+        "seq_table": "Sequence count table",
+        "database": "Tax4Fun2 default database artifact"
+    },
+    outputs=[("table", FeatureTable[Frequency])],
+    parameters={
+        "threads": Int,
+        "pct_id": Float
+    },
+    parameter_descriptions={
+        "threads": "The number of threads",
+        "pct_id": "Percent of identity, default to 0.99",
+    },
+    name="Run Tax4Fun2 algorithm",
+    description=("Run Tax4Fun2 algorithm"),
 )
 
 plugin.methods.register_function(
@@ -168,3 +203,5 @@ plugin.methods.register_function(
     name="Aggregate family abundance to high order abundance",
     description=("Aggregate family abundance to high order abundance"),
 )
+
+# importlib.import_module('q2_pathway._transformers')
