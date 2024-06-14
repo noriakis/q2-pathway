@@ -45,6 +45,7 @@ def summarize(
     cor_fig_width: int = 12,
     cor_thresh: float = None,
     map_ko: bool = False,
+    skip: bool = False,
 ) -> None:
     if map_ko:
         ## Obtain KO description from KEGG REST API
@@ -277,33 +278,33 @@ def summarize(
                         [data.loc[:, [column, ko, "category"]] for data in concs],
                         axis=0,
                     )
+                    if not skip:
+                        g = sns.FacetGrid(conc, col="category")
+                        g.map(sns.boxplot, column, ko, order=levels)
+                        g.savefig(path.join(output_dir, prefix + ".png"))
+                        plt.close(g.fig)
 
-                    g = sns.FacetGrid(conc, col="category")
-                    g.map(sns.boxplot, column, ko, order=levels)
-                    g.savefig(path.join(output_dir, prefix + ".png"))
-                    plt.close(g.fig)
+                        csv_path = os.path.join(output_dir, prefix + ".csv")
 
-                    csv_path = os.path.join(output_dir, prefix + ".csv")
+                        output = (
+                            pd.DataFrame(conc.loc[:, [column, ko, "category"]])
+                            .groupby("category")
+                            .apply(lambda x: x.groupby(column).mean(ko))
+                        )
+                        if map_ko:
+                            if ko in kodic.keys():
+                                output["ko_description"] = kodic[ko]
 
-                    output = (
-                        pd.DataFrame(conc.loc[:, [column, ko, "category"]])
-                        .groupby("category")
-                        .apply(lambda x: x.groupby(column).mean(ko))
-                    )
-                    if map_ko:
-                        if ko in kodic.keys():
-                            output["ko_description"] = kodic[ko]
+                        output.to_csv(csv_path)
 
-                    output.to_csv(csv_path)
+                        if ko.startswith("K"):
+                            output["ko"] = '<a href="' + ko_url + ko + '">' + ko + "</a>"
+                        else:
+                            output["ko"] = ko
 
-                    if ko.startswith("K"):
-                        output["ko"] = '<a href="' + ko_url + ko + '">' + ko + "</a>"
-                    else:
-                        output["ko"] = ko
-
-                    ## Save the image
-                    output_json(prefix, output_dir, output)
-                    filenames.append(prefix + ".jsonp")
+                        ## Save the image
+                        output_json(prefix, output_dir, output)
+                        filenames.append(prefix + ".jsonp")
 
                     ## Correlation output per KO per dataset
                     prefix = prefix + "_corr"
@@ -320,19 +321,21 @@ def summarize(
                             ]
 
                         corr = corrtbl.corr(method=method)
-                        base = list(combinations(corrtbl.columns.values, 2))
 
-                        fig, ax = plt.subplots(
-                            1, 1 + len(base), figsize=(cor_fig_width, 4)
-                        )
-                        sns.heatmap(corr, annot=True, ax=ax[0])
-                        for e, i in enumerate(base):
-                            sns.scatterplot(corrtbl, x=i[0], y=i[1], ax=ax[e + 1])
-                        plt.tight_layout()
+                        if not skip:
+                            base = list(combinations(corrtbl.columns.values, 2))
 
-                        figs = fig.get_figure()
-                        figs.savefig(path.join(output_dir, prefix + ".png"))
-                        plt.close(fig)
+                            fig, ax = plt.subplots(
+                                1, 1 + len(base), figsize=(cor_fig_width, 4)
+                            )
+                            sns.heatmap(corr, annot=True, ax=ax[0])
+                            for e, i in enumerate(base):
+                                sns.scatterplot(corrtbl, x=i[0], y=i[1], ax=ax[e + 1])
+                            plt.tight_layout()
+
+                            figs = fig.get_figure()
+                            figs.savefig(path.join(output_dir, prefix + ".png"))
+                            plt.close(fig)
                     else:
                         ## Only heatmap
                         corrtbl = pd.concat(
@@ -346,18 +349,20 @@ def summarize(
                             ]
 
                         corr = corrtbl.corr(method=method)
-                        plt.figure()
-                        fig = sns.heatmap(corr, annot=True)
-                        figs = fig.get_figure()
-                        figs.savefig(path.join(output_dir, prefix + ".png"))
-                        plt.close(fig.fig)
+                        if not skip:
+                            plt.figure()
+                            fig = sns.heatmap(corr, annot=True)
+                            figs = fig.get_figure()
+                            figs.savefig(path.join(output_dir, prefix + ".png"))
+                            plt.close(fig.fig)
 
-                    csv_path = os.path.join(output_dir, prefix + ".csv")
-                    corrtbl.to_csv(csv_path)
+                    if not skip:
+                        csv_path = os.path.join(output_dir, prefix + ".csv")
+                        corrtbl.to_csv(csv_path)
 
-                    ## Save the image
-                    output_json(prefix, output_dir, corr)
-                    filenames.append(prefix + ".jsonp")
+                        ## Save the image
+                        output_json(prefix, output_dir, corr)
+                        filenames.append(prefix + ".jsonp")
 
                     ## Keep the correlation values
                     corr = corr.where(np.triu(np.ones(corr.shape)).astype(bool))

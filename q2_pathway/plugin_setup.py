@@ -102,6 +102,7 @@ plugin.visualizers.register_function(
         "cor_thresh": Float,
         "use_p": Bool,
         "tables_name": List[Str],
+        "skip": Bool
     },
     parameter_descriptions={
         "tss": "Performs total-sum scaling per sample before all the analysis",
@@ -116,6 +117,7 @@ plugin.visualizers.register_function(
         "cor_thresh": "If specified, make additional visualization using only the KOs above the specified threshold, default to None",
         "use_p": "Use p-values from Wilcoxon rank sum tests between conditions in the metadata for evaulation (Sun et al. 2020)",
         "tables_name": "table name for the output, must be the same length as the specified table list",
+        "skip": "Skip the part of the correlation and heatmap image (useful when whole gene families are to be evaluated and the resulting QZV does not load)"
     },
     name="Summarize the output of functional prediction.",
     description=("Summarize the output of functional prediction."),
