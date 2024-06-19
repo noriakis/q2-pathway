@@ -1,7 +1,5 @@
 import shutil
 import json
-import pykegg
-from os import path
 import pandas as pd
 import qiime2
 import q2templates
@@ -30,6 +28,12 @@ def kegg(
     method: str = "t",
     mc_samples: int = 128,
 ) -> None:
+    try:
+        import pykegg
+    except ImportError:
+        logging.error("Please install `pykegg` for this module by running `pip install pykegg`")
+        return
+
     if tss:
         ko_table = ko_table.apply(lambda x: x / sum(x), axis=1)
         if method == "aldex2":
