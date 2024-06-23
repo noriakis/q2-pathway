@@ -329,7 +329,7 @@ def kegg(
             min_value=minval,
             max_value=maxval,
             two_slope=False,
-            colors=["blue", "red"],
+            colors=[low_color, high_color],
             width=4,
             label="Statistics",
         )
