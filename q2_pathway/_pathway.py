@@ -383,6 +383,7 @@ def gsea(
 ):
     """
     ## [TODO] More controlling options for fgsea parameters
+    ## [TODO] Saving sessionInfo()
     """
     if tss:
         tables = [table.apply(lambda x: x / sum(x), axis=1) for table in tables]
@@ -512,6 +513,7 @@ def gsea(
                         aldexpath,
                         aldeximagepath,
                         str(mc_samples),
+                        output_dir
                     ]
                     try:
                         res = subprocess.run(cmd, check=True)
@@ -574,7 +576,8 @@ def gsea(
                         deseq2path,
                         deseq2imagepath,
                         level1,
-                        level2
+                        level2,
+                        output_dir
                     ]
                     try:
                         res = subprocess.run(cmd, check=True)
@@ -626,7 +629,7 @@ def gsea(
                     output_dir,
                     prefix,
                     str(konflag),
-                    bg,
+                    bg
                 ]
                 try:
                     res = subprocess.run(cmd, check=True)
