@@ -124,6 +124,7 @@ def kegg(
                     aldexpath,
                     aldeximagepath,
                     str(mc_samples),
+                    output_dir
                 ]
                 try:
                     res = subprocess.run(cmd, check=True)
@@ -184,7 +185,8 @@ def kegg(
                     deseq2path,
                     deseq2imagepath,
                     level1,
-                    level2
+                    level2,
+                    output_dir
                 ]
                 try:
                     res = subprocess.run(cmd, check=True)
