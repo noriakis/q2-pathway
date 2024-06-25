@@ -14,6 +14,7 @@ outPath <- argv[4]
 outImagePath <- argv[5]
 lvl1 <- argv[6]
 lvl2 <- argv[7]
+outputDir <- argv[8]
 
 
 abund <- read.table(abundance, sep="\t", row.names=1, header=1)
@@ -43,3 +44,6 @@ write.table(x, file=outPath, sep="\t", quote=FALSE)
 png(outImagePath, width=5, height=5, res=96, units="in")
 plotMA(res)
 dev.off()
+
+sess <- sessionInfo()
+save(sess, file=paste0(outputDir, "/session_deseq2.rda"))

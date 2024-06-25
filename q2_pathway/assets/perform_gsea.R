@@ -75,3 +75,6 @@ png(paste0(outputDir, "/gsea_res_", pref, ".png"),
 	width=14, height=8, res=96, units="in")
 plotGseaTable(nl[topPathways], vals, res, gseaParam=0.5)
 dev.off()
+
+sess <- sessionInfo()
+save(sess, file=paste0(outputDir, "/session_gsea.rda"))
