@@ -1,7 +1,7 @@
 
 package:
   name: q2-pathway
-  version: 2024.5
+  version: 2024.5.artifact
 
 source:
   path: ../

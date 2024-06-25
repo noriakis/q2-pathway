@@ -33,10 +33,12 @@ pip install pykegg
 
 This plugin is used to analyze the functional prediction results from 16S rRNA gene sequencing dataset and optionally the profile from shotgun metagenomes.
 
-`infer` module can perform an inferrence based on Piphillin or Tax4Fun2. For Tax4Fun2, the users should install the R package in the QIIME 2 environment following [this tutorial](https://github.com/songweizhi/Tax4Fun2_short_tutorial), and download the reference database.
-The database path should be set to `--p-reference-database`. For `Piphillin`, the prebuilt database is attached with conda installation.
+`infer` module can perform an inferrence based on Piphillin or Tax4Fun2 algorithm. For Tax4Fun2, the users should install the R package in the QIIME 2 environment following [this tutorial](https://github.com/songweizhi/Tax4Fun2_short_tutorial), and download the artifact containing reference database [here](URLTBU). For `Piphillin`, the prebuilt database is bundled with conda installation.
+
+Suppose that `rep-seqs.qza` is an artifact containing the representative sequence (of ASV or OTU) and `table-dada2.qza` contains the count table of the sequences:
 
 ```shell
+## This runs the Piphillin algorithm
 qiime pathway infer \
     --i-sequences rep-seqs.qza \
     --i-seq-table table-dada2.qza \
@@ -44,9 +46,19 @@ qiime pathway infer \
     --p-threads 0
 ```
 
+```shell
+## This runs the Tax4Fun2 algorithm
+qiime pathway infer-t4f2 \
+    --i-sequences rep-seqs.qza \
+    --i-seq-table table-dada2.qza \
+    --i-database Tax4Fun2_ReferenceData_v2_artifact.qza \
+    --o-table infer_t4f2.qza
+```
+
 Also, `gsea` module is implemented for performing GSEA using `fgsea`, based on the KEGG PATHWAY mapping. The users should perform with `--verbose` for inspecting the GSEA output (like the existing of the ties). Althoug there is already a plugin (`q2-aldex2`), the function can rank the genes based on the statistics from ALDEx2. One should install ALDEx2 (`BiocManager::install("ALDEx2")`) beforehand.
 
 ```shell
+## This will run GSEA based on the log2 fold changes calculated from DESeq2
 qiime pathway gsea \
     --i-ko-table ko_metagenome.qza \
     --m-metadata-file metadata.tsv \
@@ -54,7 +66,7 @@ qiime pathway gsea \
     --p-method deseq2
 ```
 
-The `summarize` module reports and compares the gene family abundance table between the tables produced by multiple inference methods including [`q2-picrust2`](https://github.com/gavinmdouglas/q2-picrust2). Using [`q2-sapienns`](https://github.com/gregcaporaso/q2-sapienns), the results from the shotgun metagenomics data can also be compared. The correlation metrics can be chosen from `spearman`, `pearson`, `kendall` by `--p-method`. Also, the correlation based on the p-values proposed in Sun et al. 2020. can be calculated by specifying `--p-use-p`.
+The `summarize` module reports and compares the gene family abundance table between the tables produced by multiple inference methods including [`q2-picrust2`](https://github.com/gavinmdouglas/q2-picrust2). Using [`q2-sapienns`](https://github.com/gregcaporaso/q2-sapienns), the results from the shotgun metagenomics data can also be compared. In that case, the converting table for shotgun accession to 16S accession (`Metadata` containing `converted` column) must be provided to `--p-convert-table`. The correlation metrics can be chosen from `spearman`, `pearson`, `kendall` by `--p-method`. Also, the correlation based on the p-values proposed in Sun et al. 2020. can be calculated by specifying `--p-use-p`.
 
 ```shell
 qiime pathway summarize \
@@ -63,7 +75,7 @@ qiime pathway summarize \
     --o-visualization vis_output
 ```
 
-`kegg` module is implemented for visualization of KEGG PATHWAY images colored by the statistics calculated from comparing the categorical variables in the metadata. The plugin uses `pykegg` to produce the images.
+Finally, the `kegg` module is implemented for visualization of KEGG PATHWAY images colored by the statistics calculated from comparing the categorical variables in the metadata. The plugin uses `pykegg` to produce the images.
 
 ```shell
 qiime pathway kegg \

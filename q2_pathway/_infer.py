@@ -1,4 +1,5 @@
 from os import path
+import os
 import pandas as pd
 import subprocess
 from tempfile import TemporaryDirectory
@@ -6,17 +7,18 @@ import pkg_resources
 
 TEMPLATES = pkg_resources.resource_filename("q2_pathway", "assets")
 
-
-## Option to use q2-gcn-norm for normalizing by rrnDB
 def infer(
     sequences: pd.Series,
     seq_table: pd.DataFrame,
     threads: int = 1,
     full: bool = False,
-    pct_id: float = 0.99,
-    algorithm: str = "piphillin",
-    reference_database: str = None,
+    pct_id: float = 0.99
 ) -> pd.DataFrame:
+    """
+    [TODO] Option to use q2-gcn-norm for normalizing by rrnDB
+    Should we separate the reference files to artifact and distribute, rather than
+    putting them in conda release?
+    """
     reference_sequences = path.join(TEMPLATES, "16S_seqs.fasta.gz")
     cn_table = path.join(TEMPLATES, "ko_copynum.tsv.gz")
     cn_16s_table = path.join(TEMPLATES, "16S_cn.tsv.gz")
@@ -79,8 +81,13 @@ def infer(
             ## inside the archive and cannot be properly converted to QZA.
             if reference_database is None:
                 raise ValueError(
-                    "Please provide Tax4Fun2 default database path to `reference_database`."
+                    "Please provide Tax4Fun2 default database artifact to `reference_database`."
                 )
+                
+            db = qiime2.Artifact.load(reference_database)
+            d = db.view(T4F2DirectoryFormat)
+            db_path = d.path
+            
             cmd = [
                 "Rscript",
                 path.join(TEMPLATES, "perform_tax4fun2.R"),
@@ -106,3 +113,66 @@ def infer(
 
         else:
             raise ValueError("Please specify appropriate algorithm name")
+
+
+def infer_t4f2(
+    sequences: pd.Series,
+    seq_table: pd.DataFrame,
+    database: str,
+    threads: int = 1,
+    database_mode: str = "Ref99NR",
+    pct_id: float = 0.99,
+) -> pd.DataFrame:
+    """
+    We need a prior installation of Tax4Fun2 in the R in QIIME 2 environment.
+    Download https://zenodo.org/records/10035668/files/Tax4Fun2_1.1.5.tar.gz, and run
+    `R CMD INSTALL Tax4Fun2_1.1.5.tar.gz`.
+    The artifact of the database is available under GNU General Public License v3.0 or later.
+    The original files are downloaded from: https://zenodo.org/records/10035668.
+    """
+
+    if threads < 1:
+        raise ValueError("Thread number should be positive.")
+
+    with TemporaryDirectory() as temp_dir:
+        repseq = path.join(temp_dir, "rep_seqs.fna")
+
+        with open(repseq, "w") as fna:
+            for seqname, sequence in sequences.items():
+                print(">" + str(seqname) + "\n" + str(sequence), file=fna)
+        seq_table.T.to_csv(path.join(temp_dir, "seqtab.txt"), sep="\t")
+
+        ## Needs to extract database every time (use cache)
+        excmd = [
+            "tar", "-zxf",
+            database + "/Tax4Fun2_ReferenceData_v2.tar.gz",
+            "-C", temp_dir
+            ]
+        try:
+            subprocess.run(excmd, check=True)
+        except subprocess.CalledProcessError as _:
+            raise ValueError("Error extracting database.")
+   
+        cmd = [
+            "Rscript",
+            path.join(TEMPLATES, "perform_tax4fun2.R"),
+            temp_dir,
+            "rep_seqs.fna",  ## rep-seqs
+            "seqtab.txt",
+            path.join(temp_dir, "Tax4Fun2_ReferenceData_v2"),
+            str(pct_id),
+            str(threads),
+            str(database_mode)
+        ]
+        try:
+            subprocess.run(cmd, check=True)
+        except subprocess.CalledProcessError as _:
+            raise ValueError("Error running tax4fun2 algorithm.")
+        ko = pd.read_csv(
+            path.join(temp_dir, "functional_prediction.txt"),
+            sep="\t",
+            header=0,
+            index_col=0,
+        )
+        ko = ko.drop("description", axis=1)
+        return ko.T
