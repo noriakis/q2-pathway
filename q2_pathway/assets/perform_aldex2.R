@@ -13,6 +13,7 @@ condition <- argv[3]
 outPath <- argv[4]
 outImagePath <- argv[5]
 mcSamples <- as.integer(argv[6])
+outputDir <- as.character(argv[7])
 
 abund <- read.table(abundance, sep="\t", row.names=1, header=1)
 meta <- read.table(meta, sep="\t", row.names=1, header=1)
@@ -39,3 +40,6 @@ aldex.plot(res, type="MA", test="welch", xlab="Log-ratio abundance",
 aldex.plot(res, type="MW", test="welch", xlab="Dispersion",
     ylab="Difference", main='Effect plot')
 dev.off()
+
+sess <- sessionInfo()
+save(sess, file=paste0(outputDir, "/session_aldex2.rda"))
