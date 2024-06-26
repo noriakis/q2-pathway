@@ -56,7 +56,7 @@ def summarize(
         kodic = koname[1].to_dict()
 
     if convert_table is not None:
-        ## Converting table should be artifact
+        ## Converting table should be Metadata
         ## with the column name of "converted".
         ## So if shotgun profiled qza is to be read,
         ## the index should be shotgun-ID and `converted` column
