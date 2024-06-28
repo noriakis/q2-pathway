@@ -22,11 +22,27 @@ def aggregate(
         inkos = kop[kop[0] == i][1].tolist()
         inkos = list(set(kos) & set(inkos))
         if len(inkos) >= 1:
-            out = pd.DataFrame(
-                ttable.loc[[i.split(":")[1] for i in inkos], :].apply(
-                    lambda x: sum(x), axis=0
+            if method == "sum":
+                out = pd.DataFrame(
+                    ttable.loc[[i.split(":")[1] for i in inkos], :].apply(
+                        lambda x: sum(x), axis=0
+                    )
                 )
-            )
+            elif method == "median":
+                out = pd.DataFrame(
+                    ttable.loc[[i.split(":")[1] for i in inkos], :].apply(
+                        lambda x: x.median(), axis=0
+                    )
+                )
+            elif method == "mean":
+                out = pd.DataFrame(
+                    ttable.loc[[i.split(":")[1] for i in inkos], :].apply(
+                        lambda x: x.mean(), axis=0
+                    )
+                )
+            else:
+                raise ValueError("Please specify mean, median or sum in method.")
+
             out.columns = [i]
             outs.append(out)
         else:
