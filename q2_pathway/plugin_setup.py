@@ -156,6 +156,7 @@ plugin.methods.register_function(
         # 'cn_table': Str,
         # 'cn_16s_table': Str,
         "full": Bool,
+        "full_id": Str,
         "pct_id": Float
     },
     parameter_descriptions={
@@ -164,6 +165,7 @@ plugin.methods.register_function(
         # 'cn_table': 'gene copy number table, default to the preset database.',
         # 'cn_16s_table': '16S gene copy number table, default to the preset database.',
         "full": "Output the full stratified table",
+        "full_id": "When the full stratified table is calculated, only this ID will be remained.",
         "pct_id": "Percent of identity, default to 0.99"
     },
     name="Run Piphillin algorithm",

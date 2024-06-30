@@ -145,7 +145,7 @@ def summarize(
 
     if strat:
         # all_taxs = list(set([i.split("_")[0] for i in all_cols]))
-        all_kos = list(set([i.split("_")[1] for i in all_cols]))
+        all_kos = list(set([i.split("_")[0] for i in all_cols]))
 
         for column in metadata_df.columns:
             metadata_df_filt = metadata_df[metadata_df[column].notna()]

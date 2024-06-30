@@ -12,6 +12,7 @@ def infer(
     seq_table: pd.DataFrame,
     threads: int = 1,
     full: bool = False,
+    full_id: str = None, 
     pct_id: float = 0.99
 ) -> pd.DataFrame:
     """
@@ -61,20 +62,23 @@ def infer(
             cn_table,
             cn_16s_table,
             str(full),
+            str(full_id),
         ]
         try:
             subprocess.run(cmd, check=True)
         except subprocess.CalledProcessError as _:
             raise ValueError("Error running piphillin algorithm.")
-        ko = pd.read_csv(path.join(temp_dir, "ko_table.tsv"), sep="\t", header=0)
 
         if full:
-            ko.index = ko.iloc[:, 0].map(str) + "_" + ko.iloc[:, 1]
-            ko = ko.drop(ko.columns[0], axis=1)
-            ko = ko.drop(ko.columns[0], axis=1)
+            ko = pd.read_csv(path.join(temp_dir, "ko_table.txt"), sep="\t", header=0)
+            ko["ind"] = ko.KO + "_" + ko.ID
+            # ko = ko.iloc[:, 3].map(str) + "_" + ko.iloc[:, 1]
+            ko = ko.pivot_table(index="ind", columns="sample", values="value").fillna(0)
+            return ko.T
             ## This will output tax1_K00001 type index
-
-        return ko.T
+        else:
+            ko = pd.read_csv(path.join(temp_dir, "ko_table.tsv"), sep="\t", header=0)
+            return ko.T
 
 
 
