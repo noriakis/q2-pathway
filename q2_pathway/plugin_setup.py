@@ -210,4 +210,26 @@ plugin.methods.register_function(
     description=("Aggregate family abundance to high order abundance"),
 )
 
+
+## kegg
+plugin.visualizers.register_function(
+    function=q2_pathway.contribute,
+    inputs={"table": FeatureTable[Frequency]},
+    input_descriptions={"table": "table containing KO abundance per sample"},
+    parameters={
+        "metadata": Metadata,
+        "candidate": Str,
+        "fig_height": Int,
+    },
+    parameter_descriptions={
+        "candidate": "KO to be evaluated",
+        "fig_height": "Figure height",
+    },
+    name="Plot per-taxon abundance of specified gene family",
+    description=(
+        "Plot per-taxon abundance of specified gene family."
+    ),
+)
+
+
 importlib.import_module('q2_pathway._transformers')
