@@ -2,11 +2,11 @@ from setuptools import setup, find_packages
 
 setup(
     name="q2-pathway",
-    version="2024.2",
+    version="2024.5",
     packages=find_packages(),
     author="Noriaki Sato",
     author_email="nori@hgc.jp",
-    description="QIIME2 plugin for analyzing biological pathway information based on gene family abundances.",
+    description="QIIME 2 plugin for analyzing biological pathway information based on gene family abundances.",
     license="BSD-3-Clause",
     url="https://github.com/noriakis/q2-pathway",
     entry_points={"qiime2.plugins": ["q2-pathway=q2_pathway.plugin_setup:plugin"]},
@@ -16,8 +16,6 @@ setup(
             "assets/index.html",
             "assets/dist/*",
             "assets/*.R",
-            "assets/*.fasta.gz",
-            "assets/*.tsv.gz",
         ]
     },
     zip_safe=False,

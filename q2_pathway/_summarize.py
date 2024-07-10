@@ -59,8 +59,9 @@ def summarize(
         ## Converting table should be Metadata
         ## with the column name of "converted".
         ## So if shotgun profiled qza is to be read,
-        ## the index should be shotgun-ID and "converted" column
+        ## the index should be shotgun-ID and `converted` column
         ## corresponds to 16S-ID.
+        ## Or should we load directly from the `metadata` parameter?
         mapping = convert_table.to_dataframe()
         # mapping = pd.read_csv(convert, sep="\t", header=None, index_col=0)
         change = mapping["converted"].to_dict()
@@ -133,18 +134,18 @@ def summarize(
         all_cols = kop[kop[0].isin([candidate_pathway])][1].tolist()
         all_cols = list(set(all_kos) & set(all_cols))
 
-    ## Loose checking (assuming stratified table is depicted as tax1_K00001)
+    ## Loose checking for stratified (assuming stratified table is shown as K00001_taxonomy1)
+    ## As q2-picrust2 does not produce stratified table by default
+    ## What should be the format for ths stratified output?
+    ## Currently, the correlation will not be produced for the stratified output.
+    ## Also, only the first table will be summarized.
     if "_" in all_cols[0]:
         strat = True
         ko_table = tables[0]
 
-    ## As q2-picrust2 does not produce stratified table by default
-    ## What should be the format for ths stratified output?
-    ## Currently, the correlation will not be produced for the stratified output.
-
     if strat:
         # all_taxs = list(set([i.split("_")[0] for i in all_cols]))
-        all_kos = list(set([i.split("_")[1] for i in all_cols]))
+        all_kos = list(set([i.split("_")[0] for i in all_cols]))
 
         for column in metadata_df.columns:
             metadata_df_filt = metadata_df[metadata_df[column].notna()]
@@ -161,14 +162,15 @@ def summarize(
                 output = data.loc[:, candidate_columns]
                 output["sample"] = output.index.values
                 output = pd.melt(output, id_vars=["sample", column])
-                output["variable"] = output["variable"].apply(lambda x: x.split("_")[0])
+                output["variable"] = output["variable"].apply(
+                    lambda x: "_".join(x.split("_")[1:])
+                )
 
                 plt.figure()
                 bp = sns.boxplot(data=output, x="variable", y="value")
                 fig = bp.get_figure()
                 fig.savefig(path.join(output_dir, prefix + ".png"))
-                plt.clf()
-                plt.close(bp.fig)
+                plt.close()
 
                 csv_path = os.path.join(output_dir, prefix + ".csv")
 
@@ -192,7 +194,9 @@ def summarize(
                 ## Per-KO stratified abundance
 
     else:  ## If un-stratified
-        all_kos = list(set(all_cols))
+        # all_kos = list(set(all_cols))
+        all_kos = all_cols
+
         for column in metadata_df.columns:
             metadata_df_filt = metadata_df[metadata_df[column].notna()]
             levels = metadata_df_filt[column].unique()
@@ -298,7 +302,9 @@ def summarize(
                         output.to_csv(csv_path)
 
                         if ko.startswith("K"):
-                            output["ko"] = '<a href="' + ko_url + ko + '">' + ko + "</a>"
+                            output["ko"] = (
+                                '<a href="' + ko_url + ko + '">' + ko + "</a>"
+                            )
                         else:
                             output["ko"] = ko
 
@@ -434,6 +440,105 @@ def summarize(
 
                     output_json(prefix, output_dir, outp)
                     filenames.append(prefix + ".jsonp")
+
+    index = os.path.join(TEMPLATES, "index.html")
+    q2templates.render(
+        index, output_dir, context={"columns": [quote(fn) for fn in filenames]}
+    )
+    shutil.copytree(os.path.join(TEMPLATES, "dist"), os.path.join(output_dir, "dist"))
+
+
+def contribute(
+    output_dir: str,
+    table: pd.DataFrame,
+    metadata: qiime2.Metadata,
+    candidate: str,
+    fig_height: int = 16,
+) -> None:
+    filenames = []
+
+    test = table.columns[0]
+    if not test.startswith("K"):
+        raise ValueError("No KO in the column")
+    if "_" not in test:
+        raise ValueError("Seems like not stratified output of `infer`")
+
+    all_samples = [i for i in table.index.values]
+    metadata = metadata.filter_ids(all_samples)
+    metadata = metadata.filter_columns(column_type="categorical")
+    metadata = metadata.filter_columns(
+        drop_all_unique=False, drop_zero_variance=False, drop_all_missing=True
+    )
+
+    ## save out metadata for download in viz
+    metadata.save(os.path.join(output_dir, "metadata.tsv"))
+
+    ## Use in script
+    metadata_df = metadata.to_dataframe()
+    if "All" not in metadata_df.columns:
+        metadata_df["All"] = "All"
+
+    for column in metadata_df.columns:
+        metadata_df_filt = metadata_df[metadata_df[column].notna()]
+        data = pd.concat([table, metadata_df_filt], axis=1, join="inner")
+
+        prefix = column + "_" + candidate
+
+        candidate_columns = [i for i in table.columns if candidate in i]
+        if len(candidate_columns) == 0:
+            raise ValueError("Candidate ID is not present in the specified table.")
+
+        candidate_columns.append(column)
+        output = data.loc[:, candidate_columns]
+        output["sample"] = output.index.values
+        output = pd.melt(output, id_vars=["sample", column])
+        output["variable"] = output["variable"].apply(
+            lambda x: "_".join(x.split("_")[1:])
+        )
+
+        plt.figure(figsize=(8, fig_height))
+        bp = sns.boxplot(data=output, x="value", y="variable", hue=column)
+        plt.tight_layout()
+        fig = bp.get_figure()
+        fig.savefig(path.join(output_dir, prefix + ".png"))
+        plt.close()
+
+        csv_path = os.path.join(output_dir, prefix + ".csv")
+
+        outputstat = output.groupby(column).apply(
+            lambda x: x.groupby("variable").agg(
+                {"value": ["mean", "median", "min", "max"]}
+            )
+        )
+
+        outputstat.to_csv(csv_path)
+
+        output_json(prefix, output_dir, outputstat)
+        filenames.append(prefix + ".jsonp")
+
+        # Per-taxon sum across samples for the candidate KO
+        if column == "All":
+            prefix = column + "_" + candidate + "_sum"
+            candidate_columns = [i for i in table.columns if candidate in i]
+            sumtable = pd.DataFrame(
+                table.loc[:, candidate_columns].apply(lambda x: sum(x))
+            )
+            sumtable.columns = ["Sum"]
+            sumtable["Taxonomy"] = sumtable.index.values
+            sumtable = sumtable.sort_values(by="Sum", ascending=False)
+
+            plt.figure(figsize=(8, fig_height))
+            bp = sns.barplot(sumtable, x="Sum", y="Taxonomy")
+            plt.tight_layout()
+            fig = bp.get_figure()
+            fig.savefig(path.join(output_dir, prefix + ".png"))
+            plt.close()
+
+            csv_path = os.path.join(output_dir, prefix + ".csv")
+            sumtable.to_csv(csv_path)
+
+            output_json(prefix, output_dir, sumtable)
+            filenames.append(prefix + ".jsonp")
 
     index = os.path.join(TEMPLATES, "index.html")
     q2templates.render(

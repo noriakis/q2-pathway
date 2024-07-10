@@ -2,3 +2,9 @@
 q2_pathway.egg-info
 q2_pathway/assets/dist/*
 q2_pathway/assets/node_modules/*
+*.sh
+*.qza
+*.qzv
+*.zip
+*.tsv
+*.csv
