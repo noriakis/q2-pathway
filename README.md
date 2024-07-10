@@ -33,7 +33,7 @@ pip install pykegg
 
 This plugin is used to analyze the functional prediction results from 16S rRNA gene sequencing dataset and optionally the profile from shotgun metagenomes.
 
-`infer` module can perform an inferrence based on Piphillin or Tax4Fun2 algorithm. For Tax4Fun2, the users should install the R package in the QIIME 2 environment following [this tutorial](https://github.com/songweizhi/Tax4Fun2_short_tutorial), and download the artifact containing reference database [here](URLTBU). For `Piphillin`, the prebuilt database is bundled with conda installation.
+`infer` module can perform an inferrence based on Piphillin or Tax4Fun2 algorithm. For Tax4Fun2, the users should install the R package in the QIIME 2 environment following [this tutorial](https://github.com/songweizhi/Tax4Fun2_short_tutorial), and download the artifact containing reference database [here](URLTBU). For `Piphillin`, the databases can be found [here](URLTBU) (RefSeq) and [here](URLTBU) (GTDB).
 
 Suppose that `rep-seqs.qza` is an artifact containing the representative sequence (of ASV or OTU) and `table-dada2.qza` contains the count table of the sequences:
 
@@ -42,6 +42,7 @@ Suppose that `rep-seqs.qza` is an artifact containing the representative sequenc
 qiime pathway infer \
     --i-sequences rep-seqs.qza \
     --i-seq-table table-dada2.qza \
+    --i-database piphillin_refseq.qza \
     --o-table infer_piphillin.qza \
     --p-threads 0
 ```

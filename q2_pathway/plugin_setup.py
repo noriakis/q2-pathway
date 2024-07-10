@@ -19,7 +19,7 @@ citations = Citations.load("citations.bib", package="q2_pathway")
 
 plugin = Plugin(
     name="pathway",
-    version="2024.5.artifact",
+    version="2024.5",
     website="https://github.com/noriakis/q2-pathway",
     package="q2_pathway",
     description=(

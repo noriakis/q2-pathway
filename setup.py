@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name="q2-pathway",
-    version="2024.5.artifact",
+    version="2024.5",
     packages=find_packages(),
     author="Noriaki Sato",
     author_email="nori@hgc.jp",
