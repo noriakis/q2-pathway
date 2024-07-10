@@ -32,7 +32,7 @@ def kegg(
     try:
         import pykegg
     except ImportError:
-        logging.error("Please install `pykegg` for this module by running `pip install pykegg`")
+        print("Please install `pykegg` for this module by running `pip install pykegg`")
         return
     if tss:
         ko_table = ko_table.apply(lambda x: x / sum(x), axis=1)
@@ -124,7 +124,7 @@ def kegg(
                     aldexpath,
                     aldeximagepath,
                     str(mc_samples),
-                    output_dir
+                    output_dir,
                 ]
                 try:
                     res = subprocess.run(cmd, check=True)
@@ -163,7 +163,7 @@ def kegg(
                 sort_col = "padj"
                 prefix = column + "_" + level1 + "_vs_" + level2
                 prefixes.append(prefix)
-                
+
                 metapath = path.join(output_dir, "meta_aldex2.tsv")
                 kotablepath = path.join(output_dir, "ko_table.tsv")
                 deseq2path = path.join(output_dir, "deseq2_res_" + prefix + ".tsv")
@@ -186,7 +186,7 @@ def kegg(
                     deseq2imagepath,
                     level1,
                     level2,
-                    output_dir
+                    output_dir,
                 ]
                 try:
                     res = subprocess.run(cmd, check=True)
@@ -515,7 +515,7 @@ def gsea(
                         aldexpath,
                         aldeximagepath,
                         str(mc_samples),
-                        output_dir
+                        output_dir,
                     ]
                     try:
                         res = subprocess.run(cmd, check=True)
@@ -555,12 +555,16 @@ def gsea(
                     ## Probably use PyDESeq2: consider the version compatibility for conda installation
                     ## Consider prefiltering option
                     sort_col = "padj"
-                    prefix = dataset_name + "_" + column + "_" + level1 + "_vs_" + level2
-                    
+                    prefix = (
+                        dataset_name + "_" + column + "_" + level1 + "_vs_" + level2
+                    )
+
                     metapath = path.join(output_dir, "meta_aldex2.tsv")
                     kotablepath = path.join(output_dir, "ko_table.tsv")
                     deseq2path = path.join(output_dir, "deseq2_res_" + prefix + ".tsv")
-                    deseq2imagepath = path.join(output_dir, "deseq2_res_" + prefix + ".png")
+                    deseq2imagepath = path.join(
+                        output_dir, "deseq2_res_" + prefix + ".png"
+                    )
 
                     ## Make two conditions
                     metadata_df_tmp = metadata_df_filt[
@@ -579,7 +583,7 @@ def gsea(
                         deseq2imagepath,
                         level1,
                         level2,
-                        output_dir
+                        output_dir,
                     ]
                     try:
                         res = subprocess.run(cmd, check=True)
@@ -631,7 +635,7 @@ def gsea(
                     output_dir,
                     prefix,
                     str(konflag),
-                    bg
+                    bg,
                 ]
                 try:
                     res = subprocess.run(cmd, check=True)

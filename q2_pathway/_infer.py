@@ -1,5 +1,4 @@
 from os import path
-import os
 import pandas as pd
 import subprocess
 from tempfile import TemporaryDirectory
@@ -7,22 +6,23 @@ import pkg_resources
 
 TEMPLATES = pkg_resources.resource_filename("q2_pathway", "assets")
 
+
 def infer(
     sequences: pd.Series,
     seq_table: pd.DataFrame,
+    database: str,
     threads: int = 1,
     full: bool = False,
-    full_id: str = None, 
-    pct_id: float = 0.99
+    full_id: str = None,
+    pct_id: float = 0.99,
 ) -> pd.DataFrame:
     """
-    [TODO] Option to use q2-gcn-norm for normalizing by rrnDB
     Should we separate the reference files to artifact and distribute, rather than
     putting them in conda release?
     """
-    reference_sequences = path.join(TEMPLATES, "16S_seqs.fasta.gz")
-    cn_table = path.join(TEMPLATES, "ko_copynum.tsv.gz")
-    cn_16s_table = path.join(TEMPLATES, "16S_cn.tsv.gz")
+    reference_sequences = path.join(database, "16S_seqs.fasta.gz")
+    cn_table = path.join(database, "ko_copynum.tsv.gz")
+    cn_16s_table = path.join(database, "16S_cn.tsv.gz")
 
     with TemporaryDirectory() as temp_dir:
         repseq = path.join(temp_dir, "rep_seqs.fna")
@@ -81,7 +81,6 @@ def infer(
             return ko.T
 
 
-
 def infer_t4f2(
     sequences: pd.Series,
     seq_table: pd.DataFrame,
@@ -111,15 +110,17 @@ def infer_t4f2(
 
         ## Needs to extract database every time (use cache)
         excmd = [
-            "tar", "-zxf",
+            "tar",
+            "-zxf",
             database + "/Tax4Fun2_ReferenceData_v2.tar.gz",
-            "-C", temp_dir
-            ]
+            "-C",
+            temp_dir,
+        ]
         try:
             subprocess.run(excmd, check=True)
         except subprocess.CalledProcessError as _:
             raise ValueError("Error extracting database.")
-   
+
         cmd = [
             "Rscript",
             path.join(TEMPLATES, "perform_tax4fun2.R"),
@@ -129,7 +130,7 @@ def infer_t4f2(
             path.join(temp_dir, "Tax4Fun2_ReferenceData_v2"),
             str(pct_id),
             str(threads),
-            str(database_mode)
+            str(database_mode),
         ]
         try:
             subprocess.run(cmd, check=True)

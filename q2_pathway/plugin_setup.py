@@ -4,8 +4,14 @@ from q2_types.feature_data import FeatureData, Sequence
 import q2_pathway
 
 from q2_pathway import (
-    T4F2Database, T4F2DatabaseFileFormat,
-    T4F2DatabaseFormat)
+    T4F2Database,
+    T4F2DatabaseFileFormat,
+    T4F2DatabaseFormat,
+    PiphillinDatabase,
+    PiphillinDatabaseFormat,
+    TsvGzFormat,
+    FastaGzFormat,
+)
 
 import importlib
 
@@ -13,7 +19,7 @@ citations = Citations.load("citations.bib", package="q2_pathway")
 
 plugin = Plugin(
     name="pathway",
-    version="2024.2",
+    version="2024.5.artifact",
     website="https://github.com/noriakis/q2-pathway",
     package="q2_pathway",
     description=(
@@ -37,9 +43,22 @@ plugin.register_semantic_types(T4F2Database)
 plugin.register_formats(T4F2DatabaseFormat, T4F2DatabaseFileFormat)
 
 # Define and register new ArtifactClass
-plugin.register_artifact_class(T4F2Database,
-                               T4F2DatabaseFormat,
-                               description="A Tax4Fun2 database directory.")
+plugin.register_artifact_class(
+    T4F2Database, T4F2DatabaseFormat, description="A Tax4Fun2 database format."
+)
+
+# Register semantic types
+plugin.register_semantic_types(PiphillinDatabase)
+
+# Register formats
+plugin.register_formats(PiphillinDatabaseFormat, TsvGzFormat, FastaGzFormat)
+
+# Define and register new ArtifactClass
+plugin.register_artifact_class(
+    PiphillinDatabase,
+    PiphillinDatabaseFormat,
+    description="A Piphillin database format.",
+)
 
 ## kegg
 plugin.visualizers.register_function(
@@ -119,7 +138,7 @@ plugin.visualizers.register_function(
         "cor_thresh": Float,
         "use_p": Bool,
         "tables_name": List[Str],
-        "skip": Bool
+        "skip": Bool,
     },
     parameter_descriptions={
         "tss": "Performs total-sum scaling per sample before all the analysis",
@@ -134,7 +153,7 @@ plugin.visualizers.register_function(
         "cor_thresh": "If specified, make additional visualization using only the KOs above the specified threshold, default to None",
         "use_p": "Use p-values from Wilcoxon rank sum tests between conditions in the metadata for evaulation (Sun et al. 2020)",
         "tables_name": "table name for the output, must be the same length as the specified table list",
-        "skip": "Skip the part of the correlation and heatmap image (useful when whole gene families are to be evaluated and the resulting QZV does not load)"
+        "skip": "Skip the part of the correlation and heatmap image (useful when whole gene families are to be evaluated and the resulting QZV does not load)",
     },
     name="Summarize the output of functional prediction.",
     description=("Summarize the output of functional prediction."),
@@ -144,10 +163,15 @@ plugin.visualizers.register_function(
 ## infer
 plugin.methods.register_function(
     function=q2_pathway.infer,
-    inputs={"sequences": FeatureData[Sequence], "seq_table": FeatureTable[Frequency]},
+    inputs={
+        "sequences": FeatureData[Sequence],
+        "seq_table": FeatureTable[Frequency],
+        "database": PiphillinDatabase,
+    },
     input_descriptions={
         "sequences": "Representative sequences to be profiled",
         "seq_table": "Sequence count table",
+        "database": "Piphillin database artifact",
     },
     outputs=[("table", FeatureTable[Frequency])],
     parameters={
@@ -157,7 +181,7 @@ plugin.methods.register_function(
         # 'cn_16s_table': Str,
         "full": Bool,
         "full_id": Str,
-        "pct_id": Float
+        "pct_id": Float,
     },
     parameter_descriptions={
         "threads": "The number of threads",
@@ -166,7 +190,7 @@ plugin.methods.register_function(
         # 'cn_16s_table': '16S gene copy number table, default to the preset database.',
         "full": "Output the full stratified table",
         "full_id": "When the full stratified table is calculated, only this ID will be remained.",
-        "pct_id": "Percent of identity, default to 0.99"
+        "pct_id": "Percent of identity, default to 0.99",
     },
     name="Run Piphillin algorithm",
     description=("Run Piphillin algorithm"),
@@ -175,22 +199,22 @@ plugin.methods.register_function(
 ## infer_t4f2
 plugin.methods.register_function(
     function=q2_pathway.infer_t4f2,
-    inputs={"sequences": FeatureData[Sequence], "seq_table": FeatureTable[Frequency], "database": T4F2Database},
+    inputs={
+        "sequences": FeatureData[Sequence],
+        "seq_table": FeatureTable[Frequency],
+        "database": T4F2Database,
+    },
     input_descriptions={
         "sequences": "Representative sequences to be profiled",
         "seq_table": "Sequence count table",
-        "database": "Tax4Fun2 default database artifact"
+        "database": "Tax4Fun2 default database artifact",
     },
     outputs=[("table", FeatureTable[Frequency])],
-    parameters={
-        "threads": Int,
-        "pct_id": Float,
-        "database_mode": Str
-    },
+    parameters={"threads": Int, "pct_id": Float, "database_mode": Str},
     parameter_descriptions={
         "threads": "The number of threads",
         "pct_id": "Percent of identity, default to 0.99",
-        "database_mode": "Ref99NR or Ref100NR"
+        "database_mode": "Ref99NR or Ref100NR",
     },
     name="Run Tax4Fun2 algorithm",
     description=("Run Tax4Fun2 algorithm"),
@@ -226,10 +250,8 @@ plugin.visualizers.register_function(
         "fig_height": "Figure height",
     },
     name="Plot per-taxon abundance of specified gene family",
-    description=(
-        "Plot per-taxon abundance of specified gene family."
-    ),
+    description=("Plot per-taxon abundance of specified gene family."),
 )
 
 
-importlib.import_module('q2_pathway._transformers')
+importlib.import_module("q2_pathway._transformers")

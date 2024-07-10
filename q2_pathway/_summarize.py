@@ -162,7 +162,9 @@ def summarize(
                 output = data.loc[:, candidate_columns]
                 output["sample"] = output.index.values
                 output = pd.melt(output, id_vars=["sample", column])
-                output["variable"] = output["variable"].apply(lambda x: "_".join(x.split("_")[1:]))
+                output["variable"] = output["variable"].apply(
+                    lambda x: "_".join(x.split("_")[1:])
+                )
 
                 plt.figure()
                 bp = sns.boxplot(data=output, x="variable", y="value")
@@ -300,7 +302,9 @@ def summarize(
                         output.to_csv(csv_path)
 
                         if ko.startswith("K"):
-                            output["ko"] = '<a href="' + ko_url + ko + '">' + ko + "</a>"
+                            output["ko"] = (
+                                '<a href="' + ko_url + ko + '">' + ko + "</a>"
+                            )
                         else:
                             output["ko"] = ko
 
@@ -449,8 +453,8 @@ def contribute(
     table: pd.DataFrame,
     metadata: qiime2.Metadata,
     candidate: str,
-    fig_height: int = 16) -> None:
-    
+    fig_height: int = 16,
+) -> None:
     filenames = []
 
     test = table.columns[0]
@@ -465,7 +469,7 @@ def contribute(
     metadata = metadata.filter_columns(
         drop_all_unique=False, drop_zero_variance=False, drop_all_missing=True
     )
-    
+
     ## save out metadata for download in viz
     metadata.save(os.path.join(output_dir, "metadata.tsv"))
 
@@ -488,7 +492,9 @@ def contribute(
         output = data.loc[:, candidate_columns]
         output["sample"] = output.index.values
         output = pd.melt(output, id_vars=["sample", column])
-        output["variable"] = output["variable"].apply(lambda x: "_".join(x.split("_")[1:]))
+        output["variable"] = output["variable"].apply(
+            lambda x: "_".join(x.split("_")[1:])
+        )
 
         plt.figure(figsize=(8, fig_height))
         bp = sns.boxplot(data=output, x="value", y="variable", hue=column)
@@ -514,7 +520,9 @@ def contribute(
         if column == "All":
             prefix = column + "_" + candidate + "_sum"
             candidate_columns = [i for i in table.columns if candidate in i]
-            sumtable = pd.DataFrame(table.loc[:,candidate_columns].apply(lambda x: sum(x)))
+            sumtable = pd.DataFrame(
+                table.loc[:, candidate_columns].apply(lambda x: sum(x))
+            )
             sumtable.columns = ["Sum"]
             sumtable["Taxonomy"] = sumtable.index.values
             sumtable = sumtable.sort_values(by="Sum", ascending=False)
@@ -531,7 +539,6 @@ def contribute(
 
             output_json(prefix, output_dir, sumtable)
             filenames.append(prefix + ".jsonp")
-
 
     index = os.path.join(TEMPLATES, "index.html")
     q2templates.render(
