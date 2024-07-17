@@ -33,7 +33,7 @@ pip install pykegg
 
 This plugin is used to analyze the functional prediction results from 16S rRNA gene sequencing dataset and optionally the profile from shotgun metagenomes.
 
-`infer` module can perform an inferrence based on Piphillin or Tax4Fun2 algorithm. For Tax4Fun2, the users should install the R package in the QIIME 2 environment following [this tutorial](https://github.com/songweizhi/Tax4Fun2_short_tutorial), and download the artifact containing reference database [here](URLTBU).
+`infer` module can perform an inferrence based on Piphillin or Tax4Fun2 algorithm. For Tax4Fun2, the users should install the R package in the QIIME 2 environment following [this tutorial](https://github.com/songweizhi/Tax4Fun2_short_tutorial), and download the artifact containing reference database [here](https://w5po.myqnapcloud.com/share.cgi?ssid=5c1bf17d94854ecab9785ae4ece3e7bb) (the original files can be found [here](https://zenodo.org/records/10035668) under GNU General Public License v3.0 or later).
 
 For `Piphillin`, the databases can be found [here](https://w5po.myqnapcloud.com/share.cgi?ssid=998a2e41bb584a81b3b7233e8e7116e6) (RefSeq, [NCBI usage policies](https://www.ncbi.nlm.nih.gov/home/about/policies/)) and [here](https://w5po.myqnapcloud.com/share.cgi?ssid=9fd6f7d65e2a4fa595e38f3db0866773) (GTDB, [CC BY-SA 4.0](https://gtdb.ecogenomic.org/downloads)).
 
@@ -73,7 +73,8 @@ The `summarize` module reports and compares the gene family abundance table betw
 
 ```shell
 qiime pathway summarize \
-    --i-ko-table ko_metagenome.qza \
+    --i-tables ko_metagenome.qza \
+    --i-tables ko_metagenome.qza \
     --m-metadata-file metadata.tsv \
     --o-visualization vis_output
 ```
@@ -82,7 +83,7 @@ Finally, the `kegg` module is implemented for visualization of KEGG PATHWAY imag
 
 ```shell
 qiime pathway kegg \
-    --i-ko-table ko_metagenome.qza \
+    --i-tables ko_metagenome.qza \
     --m-metadata-file metadata.tsv \
     --p-pathway-id ko00240 \
     --o-visualization pathway_output
