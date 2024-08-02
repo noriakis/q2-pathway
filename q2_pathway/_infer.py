@@ -17,8 +17,8 @@ def infer(
     pct_id: float = 0.99,
 ) -> pd.DataFrame:
     """
-    Should we separate the reference files to artifact and distribute, rather than
-    putting them in conda release?
+    Inference using Piphillin algorithm
+
     """
     reference_sequences = path.join(database, "16S_seqs.fasta.gz")
     cn_table = path.join(database, "ko_copynum.tsv.gz")

@@ -1,4 +1,4 @@
-.PHONY: all viz-kegg-pathway install dev clean distclean
+.PHONY: all viz-kegg-pathway install dev clean distclean test
 
 PYTHON ?= python
 
@@ -23,3 +23,6 @@ clean: distclean
 
 distclean:
 	rm -rf q2_pathway/assets/dist
+
+test: all
+	py.test

@@ -8,3 +8,7 @@ q2_pathway/assets/node_modules/*
 *.zip
 *.tsv
 *.csv
+*.fasta
+!test-seqs.fasta
+!test-feature-table.tsv
+__pycache__
