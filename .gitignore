@@ -11,4 +11,5 @@ q2_pathway/assets/node_modules/*
 *.fasta
 !test-seqs.fasta
 !test-feature-table.tsv
+!test-metadata.tsv
 __pycache__
