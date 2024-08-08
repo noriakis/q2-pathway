@@ -17,26 +17,28 @@ lvl2 <- argv[7]
 outputDir <- argv[8]
 
 
-abund <- read.table(abundance, sep="\t", row.names=1, header=1)
-meta <- read.table(meta, sep="\t", row.names=1, header=1)
-abund_col <- colnames(abund)
+# abund <- read.table(abundance, sep="\t", row.names=1, header=1)
+# meta <- read.table(meta, sep="\t", row.names=1, header=1)
+# abund_col <- colnames(abund)
 
-abund <- apply(abund, 1, function(x) as.integer(x))
-row.names(abund) <- abund_col
+# abund <- apply(abund, 1, function(x) as.integer(x))
+# row.names(abund) <- abund_col
 
-inc_samples <- intersect(row.names(meta), colnames(abund))
-meta <- data.frame(meta[inc_samples, condition])
-colnames(meta) <- condition
+# inc_samples <- intersect(row.names(meta), colnames(abund))
+# meta <- data.frame(meta[inc_samples, condition])
+# colnames(meta) <- condition
 
 
-## Controlling of the other parameters
-meta[["condition"]] <- factor(meta[[condition]])
+# ## Controlling of the other parameters
+# meta[["condition"]] <- factor(meta[[condition]])
 
-dds <- DESeqDataSetFromMatrix(countData = abund[, inc_samples],
-                              colData = meta,
-                              design = ~ condition)
+# dds <- DESeqDataSetFromMatrix(countData = abund[, inc_samples],
+#                               colData = meta,
+#                               design = ~ condition)
 
-res <- DESeq(dds)
+# res <- DESeq(dds)
+
+load(paste0(outputDir, "/dds_", condition, ".rda"))
 x <- as.data.frame(results(res, contrast=c("condition", lvl1, lvl2)))
 write.table(x, file=outPath, sep="\t", quote=FALSE)
 

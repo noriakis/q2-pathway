@@ -60,7 +60,6 @@ plugin.register_artifact_class(
     description="A Piphillin database format.",
 )
 
-## kegg
 plugin.visualizers.register_function(
     function=q2_pathway.kegg,
     inputs={"ko_table": FeatureTable[Frequency]},
@@ -90,8 +89,6 @@ plugin.visualizers.register_function(
     ),
 )
 
-
-## gsea
 plugin.visualizers.register_function(
     function=q2_pathway.gsea,
     inputs={"tables": List[FeatureTable[Frequency]]},
@@ -105,6 +102,7 @@ plugin.visualizers.register_function(
         "module": Bool,
         "tables_name": List[Str],
         "bg": Str,
+        "rank": Str
     },
     parameter_descriptions={
         "tss": "total-sum scaling per sample before all the analysis",
@@ -114,12 +112,12 @@ plugin.visualizers.register_function(
         "module": "If specified, perform GSEA based on module - KO relationship. default to False",
         "tables_name": "table name for the output, must be the same length as the specified table list",
         "bg": "Background KOs, default to `all`. If other option is specified, subset for the KOs within the corresponding table. ORA option.",
+        "rank": "Which column to use for ranking in ALDEx2 and DESeq2."
     },
     name="Perform GSEA by the R package fgsea (experimental)",
     description=("Perform GSEA by the R package fgsea (experimental)"),
 )
 
-## summarize
 plugin.visualizers.register_function(
     function=q2_pathway.summarize,
     inputs={"tables": List[FeatureTable[Frequency]]},
@@ -160,7 +158,6 @@ plugin.visualizers.register_function(
 )
 
 
-## infer
 plugin.methods.register_function(
     function=q2_pathway.infer,
     inputs={
@@ -196,7 +193,6 @@ plugin.methods.register_function(
     description=("Run Piphillin algorithm"),
 )
 
-## infer_t4f2
 plugin.methods.register_function(
     function=q2_pathway.infer_t4f2,
     inputs={
@@ -234,8 +230,6 @@ plugin.methods.register_function(
     description=("Aggregate family abundance to high order abundance"),
 )
 
-
-## kegg
 plugin.visualizers.register_function(
     function=q2_pathway.contribute,
     inputs={"table": FeatureTable[Frequency]},
@@ -252,6 +246,5 @@ plugin.visualizers.register_function(
     name="Plot per-taxon abundance of specified gene family",
     description=("Plot per-taxon abundance of specified gene family."),
 )
-
 
 importlib.import_module("q2_pathway._transformers")

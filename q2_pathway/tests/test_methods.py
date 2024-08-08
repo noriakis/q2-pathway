@@ -20,7 +20,7 @@ class InferTests(TestPluginBase):
         table1 = pd.read_csv(self.get_data_path("test-feature-table.tsv"),
             sep="\t", index_col=0, header=0) 
         db1 = self.get_data_path("test-db")
-        test = infer(sequence1, table1, db1)
+        infer(sequence1, table1, db1)
 
 
 
