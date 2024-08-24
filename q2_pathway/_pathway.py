@@ -164,7 +164,7 @@ def kegg(
                 prefix = column + "_" + level1 + "_vs_" + level2
                 prefixes.append(prefix)
 
-                metapath = path.join(output_dir, "meta_aldex2.tsv")
+                metapath = path.join(output_dir, "meta_deseq2.tsv")
                 kotablepath = path.join(output_dir, "ko_table.tsv")
                 deseq2path = path.join(output_dir, "deseq2_res_" + prefix + ".tsv")
                 deseq2imagepath = path.join(output_dir, "deseq2_res_" + prefix + ".png")
@@ -382,11 +382,26 @@ def gsea(
     map_pathway: bool = False,
     tables_name: str = None,
     bg: str = "all",
+    rank: str = None
 ):
     """
-    ## [TODO] More controlling options for fgsea parameters
-    ## [TODO] Saving sessionInfo()
+    Perform gene set enrichment analysis based on pathway to KO relationship
+    obtained from KEGG API. T-statistics and ALDEx2 and DESeq2 statistics can
+    be used for ranking the genes.
+    [TODO] More controlling options for fgsea parameters
+    
+    Parameters:
+    -----------
+    rank: str
+        Which column to use for ranking in ALDEx2 and DESeq2.
     """
+
+    if rank is None:
+        if method == "aldex2":
+            rank = "effect"
+        if method == "deseq2":
+            rank = "log2FoldChange"
+
     if tss:
         tables = [table.apply(lambda x: x / sum(x), axis=1) for table in tables]
         if method == "aldex2":
@@ -452,6 +467,27 @@ def gsea(
             uniq_level = metadata_df_filt[column].unique()
             base = list(combinations(uniq_level, 2))
 
+            if method == "deseq2":
+                metapath = path.join(output_dir, "meta_deseq2.tsv")
+                kotablepath = path.join(output_dir, "ko_table.tsv")
+                metadata_df_filt.to_csv(metapath, sep="\t")
+                ko_table.to_csv(kotablepath, sep="\t")
+                # First make DESeq2 object and store it.
+                cmd = [
+                    "Rscript",
+                    path.join(TEMPLATES, "make_deseq2.R"),
+                    kotablepath,
+                    metapath,
+                    column,
+                    output_dir,
+                ]
+                try:
+                    res = subprocess.run(cmd, check=True)
+                except subprocess.CalledProcessError as _:
+                    raise ValueError(
+                        "DESeq2 cannot be performed due to the error in R script."
+                    )
+
             for comb in base:
                 ## Sort the level
                 comb = sorted(comb)
@@ -461,7 +497,7 @@ def gsea(
                 level2 = comb[1]
 
                 if method == "t":
-                    ## T-statistics from scipy.stats
+                    ## T-statistics from scipy.stats.ttest_ind
                     prefix = (
                         dataset_name + "_" + column + "_" + level1 + "_vs_" + level2
                     )
@@ -523,8 +559,7 @@ def gsea(
                         raise ValueError("ALDEx2 cannot be performed")
                     res = pd.read_csv(aldexpath, sep="\t", index_col=0, header=0)
 
-                    ## Better to select by the users
-                    val = res["effect"]
+                    val = res[rank]
                     val.index = ["ko:" + i for i in val.index.values]
                     val.to_csv(
                         os.path.join(output_dir, "values_" + prefix + ".tsv"),
@@ -552,6 +587,8 @@ def gsea(
 
                 elif method == "deseq2":
                     ## DESeq2 processing
+                    ## First make DESeq2 object containing all the group and extract
+                    ## results per condition
                     ## Probably use PyDESeq2: consider the version compatibility for conda installation
                     ## Consider prefiltering option
                     sort_col = "padj"
@@ -559,20 +596,13 @@ def gsea(
                         dataset_name + "_" + column + "_" + level1 + "_vs_" + level2
                     )
 
-                    metapath = path.join(output_dir, "meta_aldex2.tsv")
-                    kotablepath = path.join(output_dir, "ko_table.tsv")
+
                     deseq2path = path.join(output_dir, "deseq2_res_" + prefix + ".tsv")
                     deseq2imagepath = path.join(
                         output_dir, "deseq2_res_" + prefix + ".png"
                     )
 
                     ## Make two conditions
-                    metadata_df_tmp = metadata_df_filt[
-                        (metadata_df_filt[column] == level1)
-                        | (metadata_df_filt[column] == level2)
-                    ]
-                    metadata_df_tmp.to_csv(metapath, sep="\t")
-                    ko_table.to_csv(kotablepath, sep="\t")
                     cmd = [
                         "Rscript",
                         path.join(TEMPLATES, "perform_deseq2.R"),
@@ -593,8 +623,7 @@ def gsea(
                         )
                     res = pd.read_csv(deseq2path, sep="\t", index_col=0, header=0)
 
-                    ## Better to select by the users
-                    val = res["log2FoldChange"]
+                    val = res[rank]
                     val.index = ["ko:" + i for i in val.index.values]
 
                     val.to_csv(
