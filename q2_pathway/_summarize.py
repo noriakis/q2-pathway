@@ -224,8 +224,11 @@ def summarize(
                     ## We only need KO counts
                     concs.append(table)
 
-            ## If Wilcoxon-based correlation (sun et al. 2020.),
+            ## If Wilcoxon-based correlation (Sun et al. 2020.),
             ## we ignore the `candidate`, `candidate_pathway`, and `first` option
+            def signp(x, y):
+                pv = scipy.stats.ranksums(x, y).pvalue
+                return np.log10(pv) * np.sign(np.mean(x) - np.mean(y))
             if use_p:
                 base = list(combinations(levels, 2))
                 for pair in base:
@@ -242,9 +245,7 @@ def summarize(
                     for tbl in concs:
                         val = pd.Series(
                             tbl.columns.map(
-                                lambda x: scipy.stats.mannwhitneyu(
-                                    tbl.loc[a, x], tbl.loc[b, x]
-                                ).pvalue
+                                lambda x: signp(tbl.loc[a, x], tbl.loc[b, x])
                             )
                         )
                         val.index = tbl.columns
