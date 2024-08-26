@@ -234,6 +234,7 @@ def summarize(
             def signp(x, y):
                 pv = scipy.stats.ranksums(x, y).pvalue
                 return np.log10(pv) * np.sign(np.mean(x) - np.mean(y))
+
             if use_p:
                 base = list(combinations(levels, 2))
                 for pair in base:
@@ -262,7 +263,7 @@ def summarize(
                         df.columns = tables_name
                     else:
                         df.columns = ["data" + str(e) for e, i in enumerate(tables)]
-                    corr = df.corr()
+                    corr = df.corr(method=method)
 
                     prefix = prefix + "_corr"
 
