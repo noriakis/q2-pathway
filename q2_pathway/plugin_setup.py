@@ -71,18 +71,22 @@ plugin.visualizers.register_function(
         "map_ko": Bool,
         "low_color": Str,
         "high_color": Str,
+        "highlight": Metadata,
         "tss": Bool,
         "method": Str,
         "mc_samples": Int,
+        "rank": Str
     },
     parameter_descriptions={
         "pathway_id": "pathway to visualize, should start with ko.",
         "map_ko": "insert the KO description on the output table",
         "low_color": "color for low value",
         "high_color": "color for high value",
+        "highlight": "highlight the nodes based on metadata. Should have 'thresholded' column",
         "tss": "total-sum scaling per sample before all the analysis",
         "method": "which value to show in the image",
         "mc_samples": "parameter for ALDEx2::aldex",
+        "rank": "Which column to use for ranking in ALDEx2 and DESeq2."
     },
     name="Plot KEGG PATHWAY",
     description=(
@@ -152,7 +156,7 @@ plugin.visualizers.register_function(
         "cor_thresh": "If specified, make additional visualization using only the KOs above the specified threshold, default to None",
         "use_p": "Use p-values from Wilcoxon rank sum tests between conditions in the metadata for evaulation (Sun et al. 2020)",
         "tables_name": "table name for the output, must be the same length as the specified table list",
-        "skip": "Skip the part of the correlation and heatmap image (useful when whole gene families are to be evaluated and the resulting QZV does not load)",
+        "skip": "Skip the producing of the correlation and heatmap image (useful when whole gene families are to be evaluated and the resulting QZV does not load)",
     },
     name="Summarize the output of functional prediction.",
     description=("Summarize the output of functional prediction."),

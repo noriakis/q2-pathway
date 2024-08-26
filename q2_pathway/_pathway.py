@@ -22,18 +22,36 @@ def kegg(
     ko_table: pd.DataFrame,
     metadata: qiime2.Metadata,
     pathway_id: str,
+    highlight: qiime2.Metadata = None,
     map_ko: bool = False,
     low_color: str = "blue",
     high_color: str = "red",
     tss: bool = False,
     method: str = "t",
+    rank: str = None,
     mc_samples: int = 128,
 ) -> None:
+    
+    """
+    Specify ranking to be plotted,
+    if not specified
+    """
+    if rank is None:
+        if method == "aldex2":
+            rank = "effect"
+        if method == "deseq2":
+            rank = "log2FoldChange"
+
+    if highlight is not None:
+        highlight_df = highlight.to_dataframe()
+        if "thresholded" not in highlight_df.columns:
+            raise ValueError("thresholded column not in highlight metadata")
+
     try:
         import pykegg
     except ImportError:
-        print("Please install `pykegg` for this module by running `pip install pykegg`")
-        return
+        raise ImportError("Please install `pykegg` for this module by running `pip install pykegg`")
+        
     if tss:
         ko_table = ko_table.apply(lambda x: x / sum(x), axis=1)
         if method == "aldex2":
@@ -72,11 +90,37 @@ def kegg(
         base = list(combinations(uniq_level, 2))
         prefixes = []
         valdics = dict()
-        for comb in base:
-            ## Sort the level
-            comb = sorted(comb)
 
-            ## User control for ordering these values
+        """
+        If DESeq2, first calculate the DESeq object
+        """
+        if method == "deseq2":
+            metapath = path.join(output_dir, "meta_deseq2.tsv")
+            kotablepath = path.join(output_dir, "ko_table.tsv")
+            metadata_df_filt.to_csv(metapath, sep="\t")
+            ko_table.to_csv(kotablepath, sep="\t")
+            # First make DESeq2 object and store it.
+            cmd = [
+                "Rscript",
+                path.join(TEMPLATES, "make_deseq2.R"),
+                kotablepath,
+                metapath,
+                column,
+                output_dir,
+            ]
+            try:
+                res = subprocess.run(cmd, check=True)
+            except subprocess.CalledProcessError as _:
+                raise ValueError(
+                    "DESeq2 cannot be performed due to the error in R script."
+                )
+
+        for comb in base:
+
+            """
+            User control for ordering these levels in the metadata columns
+            """
+            comb = sorted(comb)
             level1 = comb[0]
             level2 = comb[1]
             prefix = column + "_" + level1 + "_vs_" + level2
@@ -134,8 +178,8 @@ def kegg(
                     )
                 res = pd.read_csv(aldexpath, sep="\t", index_col=0, header=0)
 
-                ## Better to select by the users
-                val = res["effect"]
+                ## Better to select by the  users
+                val = res[rank]
                 val.index = ["ko:" + i for i in val.index.values]
                 valdic = val.to_dict()
                 valdics[prefix] = valdic
@@ -157,25 +201,25 @@ def kegg(
                     fh.write("');")
                 filenames.append(jsonp)
             elif method == "deseq2":
-                ## DESeq2 processing
-                ## Probably use PyDESeq2: consider the version compatibility for conda installation
-                ## Consider prefiltering option
+
+                """
+                DESeq2 processing
+                Probably use PyDESeq2: consider the version compatibility for conda installation
+                Consider prefiltering option, but it is better to handle in `filter-feature`
+                """
                 sort_col = "padj"
                 prefix = column + "_" + level1 + "_vs_" + level2
                 prefixes.append(prefix)
 
-                metapath = path.join(output_dir, "meta_deseq2.tsv")
-                kotablepath = path.join(output_dir, "ko_table.tsv")
                 deseq2path = path.join(output_dir, "deseq2_res_" + prefix + ".tsv")
-                deseq2imagepath = path.join(output_dir, "deseq2_res_" + prefix + ".png")
+                deseq2imagepath = path.join(
+                    output_dir, "deseq2_res_" + prefix + ".png"
+                )
 
-                ## Make two conditions
-                metadata_df_tmp = metadata_df_filt[
-                    (metadata_df_filt[column] == level1)
-                    | (metadata_df_filt[column] == level2)
-                ]
-                metadata_df_tmp.to_csv(metapath, sep="\t")
-                ko_table.to_csv(kotablepath, sep="\t")
+                
+                """
+                Make two conditions
+                """
                 cmd = [
                     "Rscript",
                     path.join(TEMPLATES, "perform_deseq2.R"),
@@ -196,11 +240,16 @@ def kegg(
                     )
                 res = pd.read_csv(deseq2path, sep="\t", index_col=0, header=0)
 
-                ## Better to select by the users
-                val = res["log2FoldChange"]
+                val = res[rank]
                 val.index = ["ko:" + i for i in val.index.values]
                 valdic = val.to_dict()
                 valdics[prefix] = valdic
+
+                val.to_csv(
+                    os.path.join(output_dir, "values_" + prefix + ".tsv"),
+                    sep="\t",
+                    header=None,
+                )
 
                 deseq2_out = prefix + "_deseq2_res"
                 ## Save the aldex2 out
@@ -218,6 +267,7 @@ def kegg(
                     fh.write(quote("deseq2_res_" + prefix + ".tsv"))
                     fh.write("');")
                 filenames.append(jsonp)
+
             else:
                 raise ValueError("Method should be set to t, deseq2, or aldex2")
 
@@ -239,12 +289,36 @@ def kegg(
                 )
 
             nodes[prefix] = nodes[prefix].fillna("#808080")
-            kegg_map_image1 = pykegg.overlay_opencv_image(
-                nodes,
-                pid=pathway_id,
-                fill_color=prefix,
-                transparent_colors=["#BFBFFF", "#FFFFFF", "#BFFFBF"],
-            )
+
+            if highlight is not None:
+                highlight_nodes = ["ko:"+i for i in highlight_df[highlight_df.thresholded=="True"].index.values]
+                highlight_value = []
+                for node in nodes["name"]:
+                    in_node = [i.replace("...","") for i in node.split(" ")]
+                    intersect = set(in_node) & set(highlight_nodes)
+                    if len(intersect) > 0:
+                        highlight_value.append(True)
+                    else:
+                        highlight_value.append(False)
+
+                nodes["highlight"] = highlight_value
+                nodes = nodes[~nodes["x"].isna()]
+
+                kegg_map_image1 = pykegg.overlay_opencv_image(
+                    nodes,
+                    pid=pathway_id,
+                    fill_color=prefix,
+                    transparent_colors=["#BFBFFF", "#FFFFFF", "#BFFFBF"],
+                    highlight_nodes="highlight"
+                )
+            else:
+                kegg_map_image1 = pykegg.overlay_opencv_image(
+                    nodes,
+                    pid=pathway_id,
+                    fill_color=prefix,
+                    transparent_colors=["#BFBFFF", "#FFFFFF", "#BFFFBF"],
+                )
+
 
             kegg_map_image2 = pykegg.append_legend(
                 kegg_map_image1,
@@ -319,12 +393,34 @@ def kegg(
             ]
         )
 
-        kegg_map_image1 = pykegg.overlay_opencv_image(
-            nodes,
-            pid=pathway_id,
-            fill_color="concat",
-            transparent_colors=["#BFBFFF", "#FFFFFF", "#BFFFBF"],
-        )
+
+        if highlight is not None:
+            highlight_nodes = ["ko:"+i for i in highlight_df[highlight_df.thresholded=="True"].index.values]
+            highlight_value = []
+            for node in nodes["name"]:
+                in_node = [i.replace("...","") for i in node.split(" ")]
+                intersect = set(in_node) & set(highlight_nodes)
+                if len(intersect) > 0:
+                    highlight_value.append(True)
+                else:
+                    highlight_value.append(False)
+            nodes["highlight"] = highlight_value
+            kegg_map_image1 = pykegg.overlay_opencv_image(
+                nodes,
+                pid=pathway_id,
+                fill_color="concat",
+                transparent_colors=["#BFBFFF", "#FFFFFF", "#BFFFBF"],
+                highlight_nodes="highlight"
+            )
+        else:
+            kegg_map_image1 = pykegg.overlay_opencv_image(
+                nodes,
+                pid=pathway_id,
+                fill_color="concat",
+                transparent_colors=["#BFBFFF", "#FFFFFF", "#BFFFBF"],
+            )
+
+
 
         kegg_map_image2 = pykegg.append_legend(
             kegg_map_image1,
@@ -586,11 +682,11 @@ def gsea(
                     filenames.append(jsonp)
 
                 elif method == "deseq2":
-                    ## DESeq2 processing
-                    ## First make DESeq2 object containing all the group and extract
-                    ## results per condition
-                    ## Probably use PyDESeq2: consider the version compatibility for conda installation
-                    ## Consider prefiltering option
+                    """
+                    DESeq2 processing
+                    Probably use PyDESeq2: consider the version compatibility for conda installation
+                    Consider prefiltering option, but it is better to handle in `filter-feature`
+                    """
                     sort_col = "padj"
                     prefix = (
                         dataset_name + "_" + column + "_" + level1 + "_vs_" + level2

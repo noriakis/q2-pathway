@@ -11,6 +11,7 @@ from urllib.parse import quote
 import scipy
 import matplotlib.pyplot as plt
 from itertools import combinations
+from qiime2 import Metadata
 import pkg_resources
 
 TEMPLATES = pkg_resources.resource_filename("q2_pathway", "assets")
@@ -424,11 +425,20 @@ def summarize(
                     kostat["mean"] = kostat[("value", "mean")]
 
                     outp = kostat.loc[:, ["ko", "mean"]]
-                    outp = outp[outp["mean"] > cor_thresh]
                     csv_path = os.path.join(
                         output_dir, "cor_thresh_" + str(cor_thresh) + ".csv"
                     )
-                    outp.to_csv(csv_path)
+                    outp.index.name = "feature-id"
+                    outp = outp.reset_index()
+                    outp.columns = ["feature-id","ko","mean"]
+                    outp["thresholded"] = (outp["mean"] > cor_thresh).apply(lambda x: str(x))
+                    outp.index = outp["feature-id"]
+                    outp = outp.drop("feature-id", axis=1)
+
+
+                    Metadata(outp).save(csv_path)
+
+                    outp = outp[outp["mean"] > cor_thresh]
 
                     prefix = "cor_thresh_" + str(cor_thresh)
 
@@ -439,11 +449,6 @@ def summarize(
                     fig = g.get_figure()
                     fig.savefig(path.join(output_dir, prefix + ".png"))
                     plt.close()
-
-                    # img = Image.open(path.join(output_dir, "corr_thresh.png"))
-                    # img_byte_arr = io.BytesIO()
-                    # img.save(img_byte_arr, format='PNG')
-                    # img_byte_arr = base64.b64encode(img_byte_arr.getvalue()).decode("utf-8")
 
                     output_json(prefix, output_dir, outp)
                     filenames.append(prefix + ".jsonp")
