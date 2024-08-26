@@ -10,7 +10,8 @@ from ._types_and_formats import (
     PiphillinDatabase,
     PiphillinDatabaseFormat,
     FastaGzFormat,
-    TsvGzFormat,
+    CnTsvGzFormat,
+    GFCnTsvGzFormat,
 )
 
 __all__ = [
@@ -27,5 +28,6 @@ __all__ = [
     "PiphillinDatabase",
     "PiphillinDatabaseFormat",
     "FastaGzFormat",
-    "TsvGzFormat",
+    "CnTsvGzFormat",
+    "GFCnTsvGzFormat",
 ]

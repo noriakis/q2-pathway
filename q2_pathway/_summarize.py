@@ -32,7 +32,7 @@ def output_json(prefix, output_dir, output):
 def summarize(
     output_dir: str,
     tables: pd.DataFrame,
-    metadata: qiime2.Metadata,
+    metadata: qiime2.Metadata = None,
     convert_table: qiime2.Metadata = None,
     first: int = 100,
     candidate_pathway: str = None,
@@ -96,19 +96,24 @@ def summarize(
 
     ## Assuming unstratified output for ko_table
     ## Filter columns
-    metadata = metadata.filter_ids(all_samples)
-    metadata = metadata.filter_columns(column_type="categorical")
-    metadata = metadata.filter_columns(
-        drop_all_unique=False, drop_zero_variance=False, drop_all_missing=True
-    )
+    if metadata is not None:
+        metadata = metadata.filter_ids(all_samples)
+        metadata = metadata.filter_columns(column_type="categorical")
+        metadata = metadata.filter_columns(
+            drop_all_unique=False, drop_zero_variance=False, drop_all_missing=True
+        )
+        ## save out metadata for download in viz
+        metadata.save(os.path.join(output_dir, "metadata.tsv"))
+
+        ## Use in script
+        metadata_df = metadata.to_dataframe()
+    else:
+        metadata_df = pd.DataFrame(index=all_samples)
+        metadata_df["All"] = "All"
+        metadata_df.to_csv(os.path.join(output_dir, "metadata.tsv"), sep="\t")
 
     filenames = []
 
-    ## save out metadata for download in viz
-    metadata.save(os.path.join(output_dir, "metadata.tsv"))
-
-    ## Use in script
-    metadata_df = metadata.to_dataframe()
 
     if candidate is None:
         ## First table will be used for subset
@@ -452,8 +457,8 @@ def summarize(
 def contribute(
     output_dir: str,
     table: pd.DataFrame,
-    metadata: qiime2.Metadata,
     candidate: str,
+    metadata: qiime2.Metadata = None,
     fig_height: int = 16,
 ) -> None:
     filenames = []
@@ -465,19 +470,23 @@ def contribute(
         raise ValueError("Seems like not stratified output of `infer`")
 
     all_samples = [i for i in table.index.values]
-    metadata = metadata.filter_ids(all_samples)
-    metadata = metadata.filter_columns(column_type="categorical")
-    metadata = metadata.filter_columns(
-        drop_all_unique=False, drop_zero_variance=False, drop_all_missing=True
-    )
 
-    ## save out metadata for download in viz
-    metadata.save(os.path.join(output_dir, "metadata.tsv"))
+    if metadata is not None:
+        metadata = metadata.filter_ids(all_samples)
+        metadata = metadata.filter_columns(column_type="categorical")
+        metadata = metadata.filter_columns(
+            drop_all_unique=False, drop_zero_variance=False, drop_all_missing=True
+        )
 
-    ## Use in script
-    metadata_df = metadata.to_dataframe()
-    if "All" not in metadata_df.columns:
+        ## save out metadata for download in viz
+        metadata.save(os.path.join(output_dir, "metadata.tsv"))
+
+        ## Use in script
+        metadata_df = metadata.to_dataframe()
+    else:
+        metadata_df = pd.DataFrame(index=all_samples)
         metadata_df["All"] = "All"
+        metadata_df.to_csv(os.path.join(output_dir, "metadata.tsv"), sep="\t")
 
     for column in metadata_df.columns:
         metadata_df_filt = metadata_df[metadata_df[column].notna()]

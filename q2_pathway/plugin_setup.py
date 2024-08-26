@@ -9,7 +9,8 @@ from q2_pathway import (
     T4F2DatabaseFormat,
     PiphillinDatabase,
     PiphillinDatabaseFormat,
-    TsvGzFormat,
+    CnTsvGzFormat,
+    GFCnTsvGzFormat,
     FastaGzFormat,
 )
 
@@ -51,7 +52,7 @@ plugin.register_artifact_class(
 plugin.register_semantic_types(PiphillinDatabase)
 
 # Register formats
-plugin.register_formats(PiphillinDatabaseFormat, TsvGzFormat, FastaGzFormat)
+plugin.register_formats(PiphillinDatabaseFormat, CnTsvGzFormat, GFCnTsvGzFormat, FastaGzFormat)
 
 # Define and register new ArtifactClass
 plugin.register_artifact_class(
