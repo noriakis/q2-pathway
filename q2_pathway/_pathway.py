@@ -520,7 +520,9 @@ def gsea(
     else:
         konflag = 0
 
-    ## Download pathway (or module) info for GSEA and output
+    """
+    Download pathway (or module) info for GSEA and output
+    """
     if module:
         kop = pd.read_csv("https://rest.kegg.jp/link/ko/module", sep="\t", header=None)
         kop.to_csv(
