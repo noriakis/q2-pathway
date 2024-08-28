@@ -67,18 +67,20 @@ def kegg(
     )
     filenames = []
 
-    ## save out metadata for download in viz
     metadata.save(os.path.join(output_dir, "metadata.tsv"))
 
-    ## Use in script
     metadata_df = metadata.to_dataframe()
 
-    ## Obtain KGML and nodes DataFrame
+    """
+    Obtain KGML and nodes DataFrame
+    """
     graph = pykegg.KGML_graph(pid=pathway_id)
     nodes = graph.get_nodes()
     nodes = nodes[nodes.original_type == "ortholog"]
 
-    ## KO description
+    """
+    Obtain KO description
+    """
     if map_ko:
         koname = pd.read_csv("https://rest.kegg.jp/list/ko", sep="\t", header=None)
         koname.index = koname[0].apply(lambda x: "ko:" + x)
@@ -342,7 +344,7 @@ def kegg(
                     ['<a href="' + ko_url + i + '">' + i + "</a>" for i in x.split(" ")]
                 )
             )
-            ## Save the image
+
             jsonp = prefix + ".jsonp"
             with open(os.path.join(output_dir, jsonp), "w") as fh:
                 fh.write('load_data("%s",' % prefix)
@@ -355,7 +357,9 @@ def kegg(
                 fh.write("');")
             filenames.append(jsonp)
 
-        ## Concat all the values
+        """
+        Concat all the values
+        """
         minval = np.nanmin(nodes.loc[:, ["stat_" + p for p in prefixes]].values)
         maxval = np.nanmax(nodes.loc[:, ["stat_" + p for p in prefixes]].values)
         for p in prefixes:
@@ -436,7 +440,9 @@ def kegg(
             os.path.join(output_dir, column + "_" + pathway_id + ".png")
         )
 
-        ## Save the whole condition image
+        """
+        Save the pathway with whole comparison
+        """
         jsonp = column + ".jsonp"
         with open(os.path.join(output_dir, jsonp), "w") as fh:
             fh.write('load_data("%s",' % column)
@@ -449,7 +455,6 @@ def kegg(
             fh.write("');")
         filenames.append(jsonp)
 
-    ## Output
     index = os.path.join(TEMPLATES, "index.html")
     q2templates.render(
         index, output_dir, context={"columns": [quote(fn) for fn in filenames]}
@@ -478,12 +483,16 @@ def gsea(
     map_pathway: bool = False,
     tables_name: str = None,
     bg: str = "all",
-    rank: str = None
+    rank: str = None,
+    same: bool = False,
+    min_size: int = 0,
+    max_size: int = 500,
 ):
     """
     Perform gene set enrichment analysis based on pathway to KO relationship
     obtained from KEGG API. T-statistics and ALDEx2 and DESeq2 statistics can
     be used for ranking the genes.
+
     [TODO] More controlling options for fgsea parameters
     
     Parameters:
@@ -491,6 +500,12 @@ def gsea(
     rank: str
         Which column to use for ranking in ALDEx2 and DESeq2.
     """
+
+    if same:
+        kos = [ko_table.columns.values for ko_table in tables]
+        common_kos = list(set.intersection(*map(set, kos)))
+        tables = [table.loc[:, common_kos] for table in tables]
+
 
     if rank is None:
         if method == "aldex2":
@@ -541,23 +556,27 @@ def gsea(
             header=None,
         )
 
+    """
+    save out metadata for download in viz
+    """
+    metadata.save(os.path.join(output_dir, "metadata.tsv"))
+
+
     for e, ko_table in enumerate(tables):
         if tables_name is not None:
             dataset_name = tables_name[e]
         else:
             dataset_name = "data" + str(e)
 
-        ## Filter columns
+        """
+        Filter columns
+        """
         tmp_metadata = metadata.filter_ids(ko_table.index)
         tmp_metadata = metadata.filter_columns(column_type="categorical")
         tmp_metadata = metadata.filter_columns(
             drop_all_unique=True, drop_zero_variance=True, drop_all_missing=True
         )
 
-        ## save out metadata for download in viz
-        tmp_metadata.save(os.path.join(output_dir, dataset_name + "_metadata.tsv"))
-
-        ## Use in script
         metadata_df = tmp_metadata.to_dataframe()
 
         for column in metadata_df.columns:
@@ -570,7 +589,10 @@ def gsea(
                 kotablepath = path.join(output_dir, "ko_table.tsv")
                 metadata_df_filt.to_csv(metapath, sep="\t")
                 ko_table.to_csv(kotablepath, sep="\t")
-                # First make DESeq2 object and store it.
+
+                """
+                First make DESeq2 object and store it.
+                """
                 cmd = [
                     "Rscript",
                     path.join(TEMPLATES, "make_deseq2.R"),
@@ -587,7 +609,9 @@ def gsea(
                     )
 
             for comb in base:
-                ## Sort the level
+                """
+                Sort the level
+                """
                 comb = sorted(comb)
 
                 ## User control for ordering these values
@@ -595,7 +619,9 @@ def gsea(
                 level2 = comb[1]
 
                 if method == "t":
-                    ## T-statistics from scipy.stats.ttest_ind
+                    """
+                    T-statistics from scipy.stats.ttest_ind
+                    """
                     prefix = (
                         dataset_name + "_" + column + "_" + level1 + "_vs_" + level2
                     )
@@ -620,12 +646,13 @@ def gsea(
                         header=None,
                     )
                 elif method == "aldex2":
-                    ## We should invert the levels when using effect
+                    """
+                    We should invert the levels when using effect
+                    """
                     prefix = (
                         dataset_name + "_" + column + "_" + level2 + "_vs_" + level1
                     )
-                    ## ALDEx2
-                    ## This will take time if you have many KOs across many metadata
+
                     metapath = path.join(output_dir, "meta_aldex2.tsv")
                     kotablepath = path.join(output_dir, "ko_table.tsv")
                     aldexpath = path.join(output_dir, "aldex2_res_" + prefix + ".tsv")
@@ -633,7 +660,9 @@ def gsea(
                         output_dir, "aldex2_res_" + prefix + ".png"
                     )
 
-                    ## Make two conditions
+                    """
+                    Make two conditions
+                    """
                     metadata_df_tmp = metadata_df_filt[
                         (metadata_df_filt[column] == level1)
                         | (metadata_df_filt[column] == level2)
@@ -686,8 +715,10 @@ def gsea(
                 elif method == "deseq2":
                     """
                     DESeq2 processing
+
                     Probably use PyDESeq2: consider the version compatibility for conda installation
-                    Consider prefiltering option, but it is better to handle in `filter-feature`
+                    Consider prefiltering option, but it is better to handle in `filter-feature` in QIIME 2
+                    for the better reproduciblity.
                     """
                     sort_col = "padj"
                     prefix = (
@@ -731,7 +762,6 @@ def gsea(
                     )
 
                     deseq2_out = prefix + "_deseq2_res"
-                    ## Save the aldex2 out
                     jsonp = deseq2_out + ".jsonp"
 
                     res = res.sort_values(by=sort_col).head(50)
@@ -748,7 +778,10 @@ def gsea(
                     filenames.append(jsonp)
                 else:
                     raise ValueError("Method should be set to t, deseq2, or aldex2")
-                ## Perform GSEA
+
+                """
+                Perform GSEA
+                """
                 if bg != "all":
                     pd.Series(["ko:" + i for i in ko_table.columns]).to_csv(
                         os.path.join(output_dir, prefix + "_all_KO.txt"),
@@ -762,7 +795,9 @@ def gsea(
                     output_dir,
                     prefix,
                     str(konflag),
-                    bg
+                    bg,
+                    str(min_size),
+                    str(max_size)
                 ]
                 try:
                     res = subprocess.run(cmd, check=True)
@@ -796,7 +831,9 @@ def gsea(
                     lambda x: trunc(x)
                 )
 
-                ## The same structure as kegg
+                """
+                The same structure as kegg
+                """
                 with open(os.path.join(output_dir, jsonp), "w") as fh:
                     fh.write('load_data("%s",' % prefix)
                     json.dump("gsea_res_" + prefix + ".png", fh)

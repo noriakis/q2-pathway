@@ -49,22 +49,18 @@ def summarize(
     skip: bool = False,
 ) -> None:
     if map_ko:
-        ## Obtain KO description from KEGG REST API
-
         koname = pd.read_csv(
             "https://rest.kegg.jp/list/ko", sep="\t", header=None, index_col=0
         )
         kodic = koname[1].to_dict()
 
     if convert_table is not None:
-        ## Converting table should be Metadata
-        ## with the column name of "converted".
-        ## So if shotgun profiled qza is to be read,
-        ## the index should be shotgun-ID and `converted` column
-        ## corresponds to 16S-ID.
-        ## Or should we load directly from the `metadata` parameter?
+        """
+        Converting table should be Metadata with the column name of "converted".
+        If shotgun profiled qza is to be read, the index should be shotgun-ID and `converted` column
+        corresponds to 16S-ID.
+        """
         mapping = convert_table.to_dataframe()
-        # mapping = pd.read_csv(convert, sep="\t", header=None, index_col=0)
         change = mapping["converted"].to_dict()
 
     tbl_len = len(tables)
@@ -74,7 +70,6 @@ def summarize(
 
     strat = False
 
-    # all_cols = ko_table.columns.values
     filenames = []
 
     kos = [ko_table.columns.values for ko_table in tables]

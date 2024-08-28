@@ -24,9 +24,9 @@ plugin = Plugin(
     website="https://github.com/noriakis/q2-pathway",
     package="q2_pathway",
     description=(
-        "QIIME2 plugin for analyzing biological pathway information based on gene family abundances."
+        "QIIME 2 plugin for comparing and analyzing biological pathway information based on gene family abundances."
     ),
-    short_description="Analyze biological pathway information",
+    short_description="Compare and analyze gene family and biological pathway information",
     citations=[
         citations["Sato2023Bioinformatics"],
         citations["Kanehisa2000NAR"],
@@ -107,7 +107,10 @@ plugin.visualizers.register_function(
         "module": Bool,
         "tables_name": List[Str],
         "bg": Str,
-        "rank": Str
+        "rank": Str,
+        "same": Bool,
+        "min_size": Int,
+        "max_size": Int
     },
     parameter_descriptions={
         "tss": "total-sum scaling per sample before all the analysis",
@@ -117,10 +120,13 @@ plugin.visualizers.register_function(
         "module": "If specified, perform GSEA based on module - KO relationship. default to False",
         "tables_name": "table name for the output, must be the same length as the specified table list",
         "bg": "Background KOs, default to `all`. If other option is specified, subset for the KOs within the corresponding table. ORA option.",
-        "rank": "Which column to use for ranking in ALDEx2 and DESeq2."
+        "rank": "Which column to use for ranking in ALDEx2 and DESeq2.",
+        "same": "Use same gene set across the gene family tables",
+        "min_size": "parameter in fgsea: Minimal size of a gene set to test",
+        "max_size": "parameter in fgsea: Maximal size of a gene set to test"
     },
-    name="Perform GSEA by the R package fgsea (experimental)",
-    description=("Perform GSEA by the R package fgsea (experimental)"),
+    name="Perform GSEA by the R package fgsea",
+    description=("Perform GSEA by the R package fgsea"),
 )
 
 plugin.visualizers.register_function(
@@ -178,18 +184,12 @@ plugin.methods.register_function(
     outputs=[("table", FeatureTable[Frequency])],
     parameters={
         "threads": Int,
-        # 'reference_sequences': Str,
-        # 'cn_table': Str,
-        # 'cn_16s_table': Str,
         "full": Bool,
         "full_id": Str,
         "pct_id": Float,
     },
     parameter_descriptions={
         "threads": "The number of threads",
-        # 'reference_sequences': '16S reference sequences, default to the preset database.',
-        # 'cn_table': 'gene copy number table, default to the preset database.',
-        # 'cn_16s_table': '16S gene copy number table, default to the preset database.',
         "full": "Output the full stratified table",
         "full_id": "When the full stratified table is calculated, only this ID will be remained.",
         "pct_id": "Percent of identity, default to 0.99",

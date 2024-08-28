@@ -6,6 +6,9 @@ pref <- argv[2]
 kon <- as.integer(argv[3])
 bg <- argv[4]
 
+minsize <- as.integer(argv[5])
+maxsize <- as.integer(argv[6])
+
 cat("Beginning GSEA by fgsea\n")
 cat(pref, "\n")
 
@@ -18,6 +21,8 @@ ranks <- ranks[!is.na(ranks$V2),]
 vals <- ranks$V2
 names(vals) <- ranks$V1
 vals <- sort(vals, decreasing=TRUE)
+
+vals.length <- length(vals)
 
 
 ## Should be done in python
@@ -52,7 +57,8 @@ names(nl) <- paths
 
 
 
-res <- fgsea::fgsea(nl, vals)
+res <- fgsea::fgsea(nl, vals,
+    minSize=minsize, maxSize=maxsize)
 ores <- data.frame(res)
 
 ## Changing list to char
