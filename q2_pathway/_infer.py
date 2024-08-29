@@ -71,7 +71,7 @@ def infer(
 
         if full:
             ko = pd.read_csv(path.join(temp_dir, "ko_table.txt"), sep="\t", header=0)
-            ko["ind"] = ko.KO + "_" + ko.ID
+            ko["ind"] = ko.KO + "|" + ko.ID
             # ko = ko.iloc[:, 3].map(str) + "_" + ko.iloc[:, 1]
             ko = ko.pivot_table(index="ind", columns="sample", values="value").fillna(0)
             return ko.T

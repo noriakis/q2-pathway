@@ -59,7 +59,9 @@ def kegg(
         if method == "deseq2":
             raise ValueError("DESeq2 is for the raw count data.")
 
-    ## Filter columns
+    """
+    Filter columns
+    """
     metadata = metadata.filter_ids(ko_table.index)
     metadata = metadata.filter_columns(column_type="categorical")
     metadata = metadata.filter_columns(
@@ -397,7 +399,9 @@ def kegg(
             ]
         )
 
-
+        """
+        Mark high correlation if specified
+        """
         if highlight is not None:
             highlight_nodes = ["ko:"+i for i in highlight_df[highlight_df.thresholded=="True"].index.values]
             highlight_value = []
@@ -487,6 +491,7 @@ def gsea(
     same: bool = False,
     min_size: int = 0,
     max_size: int = 500,
+
 ):
     """
     Perform gene set enrichment analysis based on pathway to KO relationship
@@ -499,6 +504,8 @@ def gsea(
     -----------
     rank: str
         Which column to use for ranking in ALDEx2 and DESeq2.
+    same: bool
+        Use same gene set across the gene family tables.
     """
 
     if same:

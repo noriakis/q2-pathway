@@ -98,10 +98,7 @@ def summarize(
         metadata = metadata.filter_columns(
             drop_all_unique=False, drop_zero_variance=False, drop_all_missing=True
         )
-        ## save out metadata for download in viz
         metadata.save(os.path.join(output_dir, "metadata.tsv"))
-
-        ## Use in script
         metadata_df = metadata.to_dataframe()
     else:
         metadata_df = pd.DataFrame(index=all_samples)
@@ -112,9 +109,11 @@ def summarize(
 
 
     if candidate is None:
-        ## First table will be used for subset
-        ## By default, the genes are sorted based on mean abundance and `p-first` KOs
-        ## are subset for summarization.
+        """
+        First table will be used for subset
+        By default, the genes are sorted based on mean abundance and `p-first` KOs
+        are subset for summarization.
+        """
         mean_val = (
             tables[0]
             .loc[:, all_kos]
@@ -125,9 +124,10 @@ def summarize(
     else:
         all_cols = [candidate]
 
-    ## Override `first` and `candidate` option if pathway is specified
+    """
+    Override `first` and `candidate` option if pathway is specified
+    """
     if candidate_pathway is not None:
-        ## Download pathway info
         kop = pd.read_csv("https://rest.kegg.jp/link/ko/pathway", sep="\t", header=None)
         kop = kop[kop[0].apply(lambda x: "path:ko" in x)]
         kop[0] = kop[0].apply(lambda x: x.split(":")[1])
@@ -135,22 +135,29 @@ def summarize(
         all_cols = kop[kop[0].isin([candidate_pathway])][1].tolist()
         all_cols = list(set(all_kos) & set(all_cols))
 
-    ## Loose checking for stratified (assuming stratified table is shown as K00001_taxonomy1)
-    ## As q2-picrust2 does not produce stratified table by default
-    ## What should be the format for ths stratified output?
-    ## Currently, the correlation will not be produced for the stratified output.
-    ## Also, only the first table will be summarized.
-    if "_" in all_cols[0]:
+    """
+    Full (stratified output) processing
+    
+
+    Loose checking for stratified (assuming stratified table is shown as K00001|taxonomy1)
+    As q2-picrust2 does not produce stratified table by default, what should be the format for ths stratified output?
+    Currently, the correlation will not be produced for the stratified output but stratified abundances will be plotted.
+    Also, only the first table will be summarized if multiple tables are given.
+    """
+    if "|" in tables[0].columns[0]:
         strat = True
         ko_table = tables[0]
+        all_cols = ko_table.columns
 
     if strat:
         # all_taxs = list(set([i.split("_")[0] for i in all_cols]))
-        all_kos = list(set([i.split("_")[0] for i in all_cols]))
+        if candidate is None:
+            all_kos = list(set([i.split("|")[0] for i in all_cols]))
+        else:
+            all_kos = [candidate]
 
         for column in metadata_df.columns:
             metadata_df_filt = metadata_df[metadata_df[column].notna()]
-
             data = pd.concat([ko_table, metadata_df_filt], axis=1, join="inner")
 
             for ko in all_kos:
@@ -164,7 +171,7 @@ def summarize(
                 output["sample"] = output.index.values
                 output = pd.melt(output, id_vars=["sample", column])
                 output["variable"] = output["variable"].apply(
-                    lambda x: "_".join(x.split("_")[1:])
+                    lambda x: "|".join(x.split("|")[1:])
                 )
 
                 plt.figure()
@@ -192,10 +199,14 @@ def summarize(
 
                 output_json(prefix, output_dir, output)
                 filenames.append(prefix + ".jsonp")
-                ## Per-KO stratified abundance
+                """
+                Per-KO stratified abundance
+                """
 
-    else:  ## If un-stratified
-        # all_kos = list(set(all_cols))
+    else: 
+        """
+        Destratified output processing
+        """
         all_kos = all_cols
 
         for column in metadata_df.columns:
@@ -203,7 +214,9 @@ def summarize(
             levels = metadata_df_filt[column].unique()
             concs = []
             for e, table in enumerate(tables):
-                ## Rename sample id based on the parameter
+                """
+                Rename sample id based on the parameter
+                """
                 if split_str is not None:
                     table.index = [
                         i.split(quote(split_str))[0] for i in table.index.values
@@ -225,8 +238,10 @@ def summarize(
                     ## We only need KO counts
                     concs.append(table)
 
-            ## If Wilcoxon-based correlation (Sun et al. 2020.),
-            ## we ignore the `candidate`, `candidate_pathway`, and `first` option
+            """
+            If Wilcoxon-based correlation (Sun et al. 2020.),
+            we ignore the `candidate`, `candidate_pathway`, and `first` option.
+            """
             def signp(x, y):
                 pv = scipy.stats.ranksums(x, y).pvalue
                 return np.log10(pv) * np.sign(np.mean(x) - np.mean(y))
@@ -467,7 +482,7 @@ def contribute(
     test = table.columns[0]
     if not test.startswith("K"):
         raise ValueError("No KO in the column")
-    if "_" not in test:
+    if "|" not in test:
         raise ValueError("Seems like not stratified output of `infer`")
 
     all_samples = [i for i in table.index.values]
@@ -504,7 +519,7 @@ def contribute(
         output["sample"] = output.index.values
         output = pd.melt(output, id_vars=["sample", column])
         output["variable"] = output["variable"].apply(
-            lambda x: "_".join(x.split("_")[1:])
+            lambda x: "|".join(x.split("|")[1:])
         )
 
         plt.figure(figsize=(8, fig_height))
