@@ -3,6 +3,8 @@ import pandas as pd
 import subprocess
 from tempfile import TemporaryDirectory
 import pkg_resources
+import requests
+import hashlib
 
 TEMPLATES = pkg_resources.resource_filename("q2_pathway", "assets")
 
@@ -81,10 +83,88 @@ def infer(
             return ko.T
 
 
+def install_t4f2():
+    correct = "5c2edff2f597e5f061f79a5782a27567"
+
+    fn = path.join(TEMPLATES, "Tax4Fun2_ReferenceData_v2.tar.gz")
+    if path.isfile(fn):
+        print("Tax4Fun2 already installed; proceeding.")
+        print("If error was occurred in downloading, please remove " + fn)
+        with open(fn, "rb") as file:
+            fileData = file.read()
+            db_hash = hashlib.md5(fileData).hexdigest()
+        if db_hash != correct:
+            print("Hash incorrect, proceeding anyway.")
+        else:
+            print("Correct hash for database.")
+        return(0)
+
+    fns = []
+    urls = []
+    print("1. Downloading Tax4Fun2 archive...")
+    t4f2_url = "https://zenodo.org/records/10035668/files/Tax4Fun2_1.1.5.tar.gz"
+    fn = path.join(TEMPLATES, "Tax4Fun2_1.1.5.tar.gz")
+    if path.isfile(fn):
+        raise ValueError("The file is already downloaded, please remove "+ fn +" if try to proceed.")
+    fns.append(fn)
+    urls.append(t4f2_url)
+
+    res = requests.get(t4f2_url, stream=True)
+    if res.status_code == 200:
+        with open(fn, "wb") as file:
+            for chunk in res:
+                file.write(chunk)
+
+    ## Install Tax4Fun2
+    print("2. Installing Tax4Fun2...")
+    cmd = ["R", "CMD", "INSTALL", fn]
+    try:
+        subprocess.run(cmd, check=True)
+    except subprocess.CalledProcessError as _:
+        raise ValueError("Error installing tax4fun2.")
+
+    print("3. Downloading Tax4Fun2 DB...")
+    t4f2_db_url = (
+        "https://zenodo.org/records/10035668/files/Tax4Fun2_ReferenceData_v2.tar.gz"
+    )
+    fn = path.join(TEMPLATES, "Tax4Fun2_ReferenceData_v2.tar.gz")
+    if path.isfile(fn):
+        raise ValueError("The file is already downloaded, please remove "+ fn +" if try to proceed.")
+    fns.append(fn)
+    urls.append(t4f2_db_url)
+
+    res = requests.get(t4f2_db_url, stream=True)
+    if res.status_code == 200:
+        with open(fn, "wb") as file:
+            for chunk in res:
+                file.write(chunk)
+
+    hashes = []
+    for fn in fns:
+        with open(fn, "rb") as file:
+            fileData = file.read()
+            hashes.append(hashlib.md5(fileData).hexdigest())
+
+    """
+    Check database hash
+    """
+    if hashes[1] != correct:
+        print("Hash check for reference database failed. " + fns[1])
+
+    print("4. Extracting archive...")
+    cmd = ["tar", "-zxf", fn[1], "-C", TEMPLATES]
+    try:
+        subprocess.run(cmd, check=True)
+    except subprocess.CalledProcessError as _:
+        raise ValueError("Error extracting tax4fun2 database archive.")
+
+    return(0)
+
+
+
 def infer_t4f2(
     sequences: pd.Series,
     seq_table: pd.DataFrame,
-    database: str,
     threads: int = 1,
     database_mode: str = "Ref99NR",
     pct_id: float = 0.99,
@@ -97,6 +177,11 @@ def infer_t4f2(
     The original files are downloaded from: https://zenodo.org/records/10035668.
     """
 
+    """
+    Install the software and database in assets at the first try
+    """
+    install_t4f2()
+
     if threads < 1:
         raise ValueError("Thread number should be positive.")
 
@@ -108,26 +193,13 @@ def infer_t4f2(
                 print(">" + str(seqname) + "\n" + str(sequence), file=fna)
         seq_table.T.to_csv(path.join(temp_dir, "seqtab.txt"), sep="\t")
 
-        ## Needs to extract database every time (use cache)
-        excmd = [
-            "tar",
-            "-zxf",
-            database + "/Tax4Fun2_ReferenceData_v2.tar.gz",
-            "-C",
-            temp_dir,
-        ]
-        try:
-            subprocess.run(excmd, check=True)
-        except subprocess.CalledProcessError as _:
-            raise ValueError("Error extracting database.")
-
         cmd = [
             "Rscript",
             path.join(TEMPLATES, "perform_tax4fun2.R"),
             temp_dir,
-            "rep_seqs.fna",  ## rep-seqs
+            "rep_seqs.fna",
             "seqtab.txt",
-            path.join(temp_dir, "Tax4Fun2_ReferenceData_v2"),
+            path.join(TEMPLATES, "Tax4Fun2_ReferenceData_v2"),
             str(pct_id),
             str(threads),
             str(database_mode),

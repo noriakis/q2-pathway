@@ -4,9 +4,6 @@ from q2_types.feature_data import FeatureData, Sequence
 import q2_pathway
 
 from q2_pathway import (
-    T4F2Database,
-    T4F2DatabaseFileFormat,
-    T4F2DatabaseFormat,
     PiphillinDatabase,
     PiphillinDatabaseFormat,
     CnTsvGzFormat,
@@ -35,17 +32,6 @@ plugin = Plugin(
         citations["Narayan2020BMCGenomics"],
         citations["Wemheuer2020EnvMicro"],
     ],
-)
-
-# Register semantic types
-plugin.register_semantic_types(T4F2Database)
-
-# Register formats
-plugin.register_formats(T4F2DatabaseFormat, T4F2DatabaseFileFormat)
-
-# Define and register new ArtifactClass
-plugin.register_artifact_class(
-    T4F2Database, T4F2DatabaseFormat, description="A Tax4Fun2 database format."
 )
 
 # Register semantic types
@@ -203,12 +189,10 @@ plugin.methods.register_function(
     inputs={
         "sequences": FeatureData[Sequence],
         "seq_table": FeatureTable[Frequency],
-        "database": T4F2Database,
     },
     input_descriptions={
         "sequences": "Representative sequences to be profiled",
         "seq_table": "Sequence count table",
-        "database": "Tax4Fun2 default database artifact",
     },
     outputs=[("table", FeatureTable[Frequency])],
     parameters={"threads": Int, "pct_id": Float, "database_mode": Str},
