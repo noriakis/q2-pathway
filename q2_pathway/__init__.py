@@ -1,6 +1,6 @@
 from ._pathway import kegg, gsea
 from ._infer import infer, infer_t4f2
-from ._summarize import summarize, contribute
+from ._summarize import summarize, contribute, permute
 from ._aggregate import aggregate
 
 from ._types_and_formats import (

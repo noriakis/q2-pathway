@@ -70,8 +70,6 @@ def summarize(
 
     strat = False
 
-    filenames = []
-
     kos = [ko_table.columns.values for ko_table in tables]
     all_kos = list(set.intersection(*map(set, kos)))
     samples = [ko_table.index.values for ko_table in tables]
@@ -90,8 +88,6 @@ def summarize(
     if len(all_kos) == 0:
         raise ValueError("No common genes present across datasets")
 
-    ## Assuming unstratified output for ko_table
-    ## Filter columns
     if metadata is not None:
         metadata = metadata.filter_ids(all_samples)
         metadata = metadata.filter_columns(column_type="categorical")
@@ -200,7 +196,7 @@ def summarize(
                 output_json(prefix, output_dir, output)
                 filenames.append(prefix + ".jsonp")
                 """
-                Per-KO stratified abundance
+                End of Per-KO stratified abundance
                 """
 
     else: 
@@ -290,7 +286,7 @@ def summarize(
                     output_json(prefix, output_dir, corr)
                     filenames.append(prefix + ".jsonp")
 
-            else:  ## End of summarize for using the p-values
+            else:
                 corrs = []
                 for ko in all_kos:
                     prefix = column + "_" + ko
@@ -326,14 +322,23 @@ def summarize(
                         else:
                             output["ko"] = ko
 
-                        ## Save the image
+                        
+                        """
+                        Save the image
+                        """
                         output_json(prefix, output_dir, output)
                         filenames.append(prefix + ".jsonp")
 
-                    ## Correlation output per KO per dataset
+                    """
+                    Correlation output per KO per dataset
+                    """
                     prefix = prefix + "_corr"
                     if tbl_len > 1:
-                        ## If multiple tables, append scatterplot
+                        
+                        """
+                        If multiple tables, append scatterplot
+                        This will enlarge the width of the figures
+                        """
                         corrtbl = pd.concat(
                             [table.loc[all_samples, ko] for table in tables], axis=1
                         )
@@ -416,17 +421,14 @@ def summarize(
                 fig.savefig(path.join(output_dir, "whole_corr.png"))
                 plt.close()
 
-                # img = Image.open(path.join(output_dir, "whole_corr.png"))
-                # img_byte_arr = io.BytesIO()
-                # img.save(img_byte_arr, format='PNG')
-                # img_byte_arr = base64.b64encode(img_byte_arr.getvalue()).decode("utf-8")
-
                 prefix = "whole_corr"
                 output_json(prefix, output_dir, corsum)
                 filenames.append(prefix + ".jsonp")
 
                 if cor_thresh is not None:
-                    ## Subset to between dataset correlation
+                    """
+                    Subset to between dataset correlation
+                    """
                     subset_cor = all_cor[all_cor.d1 != all_cor.d2]
                     kostat = subset_cor.groupby("ko").agg(
                         {"value": ["mean", "median", "min", "max"]}
@@ -445,7 +447,9 @@ def summarize(
                     outp.index = outp["feature-id"]
                     outp = outp.drop("feature-id", axis=1)
 
-
+                    """
+                    Output metadata that can be used in the `kegg` module
+                    """
                     Metadata(outp).save(csv_path)
 
                     outp = outp[outp["mean"] > cor_thresh]
@@ -565,6 +569,156 @@ def contribute(
 
             output_json(prefix, output_dir, sumtable)
             filenames.append(prefix + ".jsonp")
+
+    index = os.path.join(TEMPLATES, "index.html")
+    q2templates.render(
+        index, output_dir, context={"columns": [quote(fn) for fn in filenames]}
+    )
+    shutil.copytree(os.path.join(TEMPLATES, "dist"), os.path.join(output_dir, "dist"))
+
+
+
+def scipy_cor(x, y, method):
+    """
+    Avoid internal alignment in Series.corr
+    """
+    if method=="pearson":
+        return(scipy.stats.pearsonr(x,y)[0])
+    elif method=="spearman":
+        return(scipy.stats.spearmanr(x,y)[0])
+    else:
+        return(scipy.stats.kendalltau(x,y)[0])
+
+def permute(
+    output_dir: str,
+    tables: pd.DataFrame,
+    nperm: int = 100,
+    convert_table: qiime2.Metadata = None,
+    candidate_pathway: str = None,
+    candidate: str = None,
+    tss: bool = False,
+    split_str: str = None,
+    method: str = "spearman",
+    tables_name: str = None,
+) -> None:
+    """
+    Assess correlation based on permutation
+    Accept only two tables, one is ground truth
+    and the other is inference
+    """
+    if len(tables)!=2:
+        raise ValueError("Two tables should be provided to this module")
+    
+    if convert_table is not None:
+        """
+        Converting table should be Metadata with the column name of "converted".
+        If shotgun profiled qza is to be read, the index should be shotgun-ID and `converted` column
+        corresponds to 16S-ID.
+        """
+        mapping = convert_table.to_dataframe()
+        change = mapping["converted"].to_dict()
+
+    if tss:
+        tables = [ko_table.apply(lambda x: x / sum(x), axis=1) for ko_table in tables]
+
+    kos = [ko_table.columns.values for ko_table in tables]
+    all_kos = list(set.intersection(*map(set, kos)))
+    samples = [ko_table.index.values for ko_table in tables]
+
+    if split_str is not None:
+        samples = [[i.split(quote(split_str))[0] for i in j] for j in samples]
+
+    if convert_table is not None:
+        samples = [[change[i] if i in change.keys() else i for i in j] for j in samples]
+
+    all_samples = list(set.intersection(*map(set, samples)))
+    
+    if len(all_samples) == 0:
+        raise ValueError("No common samples present across datasets")
+
+    if len(all_kos) == 0:
+        raise ValueError("No common genes present across datasets")
+
+    filenames = []
+
+
+    if candidate is None:
+        all_cols = all_kos
+    else:
+        all_cols = [candidate]
+
+    """
+    Override `first` and `candidate` option if pathway is specified
+    """
+    if candidate_pathway is not None:
+        kop = pd.read_csv("https://rest.kegg.jp/link/ko/pathway", sep="\t", header=None)
+        kop = kop[kop[0].apply(lambda x: "path:ko" in x)]
+        kop[0] = kop[0].apply(lambda x: x.split(":")[1])
+        kop[1] = kop[1].apply(lambda x: x.split(":")[1])
+        all_cols = kop[kop[0].isin([candidate_pathway])][1].tolist()
+        all_cols = list(set(all_kos) & set(all_cols))
+        
+    concs = []
+    for e, table in enumerate(tables):
+        """
+        Rename sample id based on the parameter
+        """
+        if split_str is not None:
+            table.index = [
+                i.split(quote(split_str))[0] for i in table.index.values
+            ]
+        if convert_table is not None:
+            table.index = [
+                change[i] if i in change.keys() else i
+                for i in table.index.values
+            ]
+
+        if tables_name is not None:
+            table["category"] = tables_name[e]
+        else:
+            table["category"] = "data" + str(e)
+    
+        concs.append(table)
+    
+    permuted = []
+    unpermuted = []
+    for ko in all_cols:
+        x = concs[0].loc[all_samples, ko].tolist()
+        y = concs[1].loc[all_samples, ko]
+        unpermuted.append([scipy_cor(x, y.tolist(), method=method), ko])
+        for i in range(nperm):
+            yp = y.sample(frac=1, random_state=i).tolist()
+            permuted.append([scipy_cor(x, yp, method=method), ko])
+            
+    perm_df = pd.DataFrame(permuted)
+    unperm_df = pd.DataFrame(unpermuted)
+    perm_df["group"] = "Permuted"
+    unperm_df["group"] = "Unpermuted"
+    output = pd.concat([perm_df, unperm_df])
+    output.columns = ["value","ko","group"]
+    
+    """
+    Plot and save
+    """
+    prefix = "permute"
+    print(output)
+    
+    plt.figure()
+    bp = sns.boxplot(data=output, x="group", y="value")
+    fig = bp.get_figure()
+    fig.savefig(path.join(output_dir, prefix + ".png"))
+    plt.close()
+
+    csv_path = os.path.join(output_dir, prefix + ".csv")
+    output.to_csv(csv_path)
+    output = output.groupby("group").apply(
+        lambda x: x.groupby("ko").mean("value")
+    )
+
+
+
+    output_json(prefix, output_dir, output)
+    filenames.append(prefix + ".jsonp")
 
     index = os.path.join(TEMPLATES, "index.html")
     q2templates.render(

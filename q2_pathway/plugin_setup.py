@@ -236,4 +236,33 @@ plugin.visualizers.register_function(
     description=("Plot per-taxon abundance of specified gene family."),
 )
 
+
+plugin.visualizers.register_function(
+    function=q2_pathway.permute,
+    inputs={"tables": List[FeatureTable[Frequency]]},
+    input_descriptions={"tables": "list of two tables containing KO abundance per sample"},
+    parameters={
+        "tss": Bool,
+        "method": Str,
+        "candidate": Str,
+        "candidate_pathway": Str,
+        "split_str": Str,
+        "convert_table": Metadata,
+        "tables_name": List[Str],
+        "nperm": Int,
+    },
+    parameter_descriptions={
+        "tss": "Performs total-sum scaling per sample before all the analysis",
+        "method": "Correlation method, default to `spearman`",
+        "candidate": "Candidate KO to summarize",
+        "candidate_pathway": "Candidate pathway ID in KEGG PATHWAY to summarize",
+        "split_str": 'Split the string of column names and takes the first argument, e.g. if XXXX_1234_5678 and "_" is specified, the column will be converted to XXX',
+        "convert_table": 'Converting table artifact (Column name "convert" will be used)',
+        "tables_name": "table name for the output, must be the same length as the specified table list",
+        "nperm": "Number of permutations"
+    },
+    name="Assess correlation of the output of functional prediction based on permutation.",
+    description=("Summarize the output of functional prediction."),
+)
+
 importlib.import_module("q2_pathway._transformers")
