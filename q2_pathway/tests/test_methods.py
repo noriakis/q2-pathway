@@ -22,6 +22,16 @@ class InferTests(TestPluginBase):
         db1 = self.get_data_path("test-db")
         infer(sequence1, table1, db1)
 
+    def test_infer_full(self):
+        sequence1 = transform(
+            self.get_data_path('test-seqs.fasta'),
+            from_type=DNAFASTAFormat,
+            to_type=pd.Series)
+        table1 = pd.read_csv(self.get_data_path("test-feature-table.tsv"),
+            sep="\t", index_col=0, header=0) 
+        db1 = self.get_data_path("test-db")
+        infer(sequence1, table1, db1, full=True)
+
 
 
 class SummarizeTests(TestPluginBase):
@@ -42,3 +52,8 @@ class SummarizeTests(TestPluginBase):
         meta = Metadata.load(self.get_data_path('test-metadata.tsv'))
         with TemporaryDirectory() as temp_dir:
             summarize(temp_dir, [test, test2], meta)
+        """
+        P-value mode test
+        """
+        with TemporaryDirectory() as temp_dir:
+            summarize(temp_dir, [test, test2], meta, use_p=True)
