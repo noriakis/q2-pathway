@@ -481,7 +481,7 @@ def gsea(
     tables: pd.DataFrame,
     metadata: qiime2.Metadata,
     tss: bool = False,
-    method: str = "t",
+    methods: list = ["t"],
     mc_samples: int = 128,
     module: bool = False,
     map_pathway: bool = False,
@@ -507,24 +507,22 @@ def gsea(
     same: bool
         Use same gene set across the gene family tables.
     """
+    if len(methods) > 1:
+        if len(methods) != len(tables):
+            raise ValueError("Method length and table length do not match")
+    else:
+        methods = [methods[0] for i in range(len(table))]
 
     if same:
         kos = [ko_table.columns.values for ko_table in tables]
         common_kos = list(set.intersection(*map(set, kos)))
         tables = [table.loc[:, common_kos] for table in tables]
 
-
-    if rank is None:
-        if method == "aldex2":
-            rank = "effect"
-        if method == "deseq2":
-            rank = "log2FoldChange"
-
     if tss:
         tables = [table.apply(lambda x: x / sum(x), axis=1) for table in tables]
-        if method == "aldex2":
+        if "aldex2" in methods:
             raise ValueError("ALDEx2 is for the count data.")
-        if method == "deseq2":
+        if "deseq2" in methods:
             raise ValueError("DESeq2 is for the raw count data.")
 
     filenames = []
@@ -570,6 +568,14 @@ def gsea(
 
 
     for e, ko_table in enumerate(tables):
+        method = methods[e]
+        print("Dataset " + str(e) + ": method " + method)
+        if rank is None:
+            if method == "aldex2":
+                rank = "effect"
+            if method == "deseq2":
+                rank = "log2FoldChange"
+
         if tables_name is not None:
             dataset_name = tables_name[e]
         else:

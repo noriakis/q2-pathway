@@ -87,7 +87,7 @@ plugin.visualizers.register_function(
     parameters={
         "metadata": Metadata,
         "tss": Bool,
-        "method": Str,
+        "methods": List[Str],
         "mc_samples": Int,
         "map_pathway": Bool,
         "module": Bool,
@@ -100,7 +100,7 @@ plugin.visualizers.register_function(
     },
     parameter_descriptions={
         "tss": "total-sum scaling per sample before all the analysis",
-        "method": "which value to show in the image",
+        "methods": "which value to show in the image",
         "mc_samples": "parameter for ALDEx2::aldex",
         "map_pathway": "map pathway name",
         "module": "If specified, perform GSEA based on module - KO relationship. default to False",
