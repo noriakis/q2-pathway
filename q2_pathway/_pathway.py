@@ -480,7 +480,6 @@ def trunc(x):
         truncstr = "/".join(tmp)
     return truncstr
 
-
 def gsea(
     output_dir: str,
     tables: pd.DataFrame,
@@ -496,7 +495,6 @@ def gsea(
     same: bool = False,
     min_size: int = 0,
     max_size: int = 500,
-
 ):
     """
     Perform gene set enrichment analysis based on pathway to KO relationship
@@ -537,15 +535,26 @@ def gsea(
     filenames = []
 
     if map_pathway:
-        kon = pd.read_csv("https://rest.kegg.jp/list/pathway", sep="\t", header=None)
-        kon[0] = kon[0].apply(lambda x: x.replace("map", "path:ko"))
-        kon.to_csv(
-            os.path.join(output_dir, "pathway_names.tsv"),
-            sep="\t",
-            index=False,
-            header=None,
-        )
-        konflag = 1
+        if module:
+            kon = pd.read_csv("https://rest.kegg.jp/list/module", sep="\t", header=None)
+            kon[0] = kon[0].apply(lambda x: str("md:") + str(x))        
+            kon.to_csv(
+                os.path.join(output_dir, "pathway_names.tsv"),
+                sep="\t",
+                index=False,
+                header=None,
+            )
+            konflag = 1
+        else:
+            kon = pd.read_csv("https://rest.kegg.jp/list/pathway", sep="\t", header=None)
+            kon[0] = kon[0].apply(lambda x: x.replace("map", "path:ko"))
+            kon.to_csv(
+                os.path.join(output_dir, "pathway_names.tsv"),
+                sep="\t",
+                index=False,
+                header=None,
+            )
+            konflag = 1            
     else:
         konflag = 0
 

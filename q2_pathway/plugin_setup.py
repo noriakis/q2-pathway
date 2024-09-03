@@ -142,7 +142,7 @@ plugin.visualizers.register_function(
         "candidate": "Candidate KO to summarize",
         "candidate_pathway": "Candidate pathway ID in KEGG PATHWAY to summarize",
         "split_str": 'Split the string of column names and takes the first argument, e.g. if XXXX_1234_5678 and "_" is specified, the column will be converted to XXX',
-        "convert_table": 'Converting table artifact (Column name "convert" will be used)',
+        "convert_table": 'Converting table artifact (Column name "converted" will be used)',
         "map_ko": "Insert the KO description in the output",
         "cor_fig_width": "Correlation figure width",
         "cor_thresh": "If specified, make additional visualization using only the KOs above the specified threshold, default to None",
