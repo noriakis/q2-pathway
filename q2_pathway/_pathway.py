@@ -511,7 +511,7 @@ def gsea(
         if len(methods) != len(tables):
             raise ValueError("Method length and table length do not match")
     else:
-        methods = [methods[0] for i in range(len(table))]
+        methods = [methods[0] for i in range(len(tables))]
 
     if same:
         kos = [ko_table.columns.values for ko_table in tables]
