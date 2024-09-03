@@ -103,7 +103,7 @@ def kegg(
             kotablepath = path.join(output_dir, "ko_table.tsv")
             metadata_df_filt.to_csv(metapath, sep="\t")
             ko_table.to_csv(kotablepath, sep="\t")
-            # First make DESeq2 object and store it.
+
             cmd = [
                 "Rscript",
                 path.join(TEMPLATES, "make_deseq2.R"),
@@ -130,7 +130,10 @@ def kegg(
             prefix = column + "_" + level1 + "_vs_" + level2
 
             if method == "t":
-                ## T-stats
+                """
+                Calculation for t-statistics
+                """
+
                 prefixes.append(prefix)
                 a = metadata_df_filt[metadata_df_filt[column] == level1].index.tolist()
                 b = metadata_df_filt[metadata_df_filt[column] == level2].index.tolist()
@@ -145,18 +148,22 @@ def kegg(
                 valdic = val.to_dict()
                 valdics[prefix] = valdic
             elif method == "aldex2":
-                ## We should invert the levels when using effect
+                """
+                We should invert the levels when using effect in ALDEx2
+                """
                 sort_col = "wi.ep"
                 prefix = column + "_" + level2 + "_vs_" + level1
                 prefixes.append(prefix)
-                ## ALDEx2
-                ## This will take time if you have many KOs across many metadata
+
+                """
+                ALDEx2
+                This will take time if you have many KOs across many metadata
+                """
                 metapath = path.join(output_dir, "meta_aldex2.tsv")
                 kotablepath = path.join(output_dir, "ko_table.tsv")
                 aldexpath = path.join(output_dir, "aldex2_res_" + prefix + ".tsv")
                 aldeximagepath = path.join(output_dir, "aldex2_res_" + prefix + ".png")
 
-                ## Make two conditions
                 metadata_df_tmp = metadata_df_filt[
                     (metadata_df_filt[column] == level1)
                     | (metadata_df_filt[column] == level2)
@@ -182,14 +189,12 @@ def kegg(
                     )
                 res = pd.read_csv(aldexpath, sep="\t", index_col=0, header=0)
 
-                ## Better to select by the  users
                 val = res[rank]
                 val.index = ["ko:" + i for i in val.index.values]
                 valdic = val.to_dict()
                 valdics[prefix] = valdic
 
                 aldex2_out = prefix + "_aldex2_res"
-                ## Save the aldex2 out
                 jsonp = aldex2_out + ".jsonp"
 
                 res = res.sort_values(by=sort_col).head(50)
@@ -498,7 +503,8 @@ def gsea(
     obtained from KEGG API. T-statistics and ALDEx2 and DESeq2 statistics can
     be used for ranking the genes.
 
-    [TODO] More controlling options for fgsea parameters
+    [TODO] More controlling options for fgsea parameters.
+    Currently, min and max gene set size can be controlled.
     
     Parameters:
     -----------
@@ -506,6 +512,9 @@ def gsea(
         Which column to use for ranking in ALDEx2 and DESeq2.
     same: bool
         Use same gene set across the gene family tables.
+    methods: list of str
+        Methods to rank the gene families per tables.
+        If one method is specified, the method will be used for all the tables.
     """
     if len(methods) > 1:
         if len(methods) != len(tables):
