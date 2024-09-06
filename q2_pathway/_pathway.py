@@ -495,6 +495,7 @@ def gsea(
     same: bool = False,
     min_size: int = 0,
     max_size: int = 500,
+    split_str: str = None,
 ):
     """
     Perform gene set enrichment analysis based on pathway to KO relationship
@@ -531,6 +532,9 @@ def gsea(
             raise ValueError("ALDEx2 is for the count data.")
         if "deseq2" in methods:
             raise ValueError("DESeq2 is for the raw count data.")
+
+    if split_str is not None:
+        tables = [table.set_axis([i.split(quote(split_str))[0] for i in table.index.values.tolist()]) for table in tables]
 
     filenames = []
 

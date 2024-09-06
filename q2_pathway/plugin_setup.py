@@ -96,7 +96,8 @@ plugin.visualizers.register_function(
         "rank": Str,
         "same": Bool,
         "min_size": Int,
-        "max_size": Int
+        "max_size": Int,
+        "split_str": Str,
     },
     parameter_descriptions={
         "tss": "total-sum scaling per sample before all the analysis",
@@ -109,7 +110,8 @@ plugin.visualizers.register_function(
         "rank": "Which column to use for ranking in ALDEx2 and DESeq2.",
         "same": "Use same gene set across the gene family tables",
         "min_size": "parameter in fgsea: Minimal size of a gene set to test",
-        "max_size": "parameter in fgsea: Maximal size of a gene set to test"
+        "max_size": "parameter in fgsea: Maximal size of a gene set to test",
+        "split_str": "Split the sample name and take the first argument, effective for all tables"
     },
     name="Perform GSEA by the R package fgsea",
     description=("Perform GSEA by the R package fgsea"),
