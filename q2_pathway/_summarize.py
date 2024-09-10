@@ -70,6 +70,14 @@ def summarize(
 
     strat = False
 
+    lenkos = [len(ko_table.columns.values) for ko_table in tables]
+    for e, n in enumerate(lenkos):
+        if tables_name is not None:
+            print(tables_name[e] + " : " + str(n))
+        else:
+            print("Data " + str(e) +  " : " + str(n))
+
+
     kos = [ko_table.columns.values for ko_table in tables]
     all_kos = list(set.intersection(*map(set, kos)))
     samples = [ko_table.index.values for ko_table in tables]

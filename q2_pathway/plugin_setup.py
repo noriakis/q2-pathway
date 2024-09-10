@@ -31,6 +31,8 @@ plugin = Plugin(
         citations["Love2014GenomeBiol"],
         citations["Narayan2020BMCGenomics"],
         citations["Wemheuer2020EnvMicro"],
+        citations["Sun2020Microbiome"],
+
     ],
 )
 
