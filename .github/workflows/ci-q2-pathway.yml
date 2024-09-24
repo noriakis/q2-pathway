@@ -1,0 +1,12 @@
+name: ci-q2-pathway
+on:
+  pull_request:
+    branches: ["main"]
+  push:
+    branches: ["main"]
+jobs:
+  ci:
+    uses: qiime2/distributions/.github/workflows/lib-community-ci.yaml@dev
+    with:
+      github-repo: q2-pathway
+      env-file-name: 2024.05-q2-pathway-environment.yml

@@ -1,0 +1,18 @@
+channels:
+- https://packages.qiime2.org/qiime2/2024.05/amplicon/released
+- conda-forge
+- bioconda
+- noriakisato
+dependencies:
+  - qiime2-2024.05
+  - pip
+  - pip:
+    - q2-pathway@git+https://github.com/noriakis/q2-pathway.git@main
+  - python >=3.9,<3.10
+  - q2templates
+  - q2-types
+  - bioconductor-fgsea
+  - r-piphir
+  - numpy
+  - scipy
+  - pandas
