@@ -9,4 +9,4 @@ jobs:
     uses: qiime2/distributions/.github/workflows/lib-community-ci.yaml@dev
     with:
       github-repo: q2-pathway
-      env-file-name: 2024.05-q2-pathway-environment.yml
+      env-file-name: 2024.5-q2-pathway-environment.yml

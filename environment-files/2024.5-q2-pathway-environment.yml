@@ -1,10 +1,10 @@
 channels:
-- https://packages.qiime2.org/qiime2/2024.05/amplicon/released
+- https://packages.qiime2.org/qiime2/2024.5/amplicon/released
 - conda-forge
 - bioconda
 - noriakisato
 dependencies:
-  - qiime2-2024.05
+  - qiime2-2024.5
   - pip
   - pip:
     - q2-pathway@git+https://github.com/noriakis/q2-pathway.git@main
