@@ -1,13 +1,13 @@
 
 package:
   name: q2-pathway
-  version: 2024.5
+  version: 2024.10
 
 source:
   path: ../
 
 build:
-  number: 2
+  number: 1
   script: make install
 
 requirements:
@@ -15,11 +15,11 @@ requirements:
     - nodejs
 
   host:
-    - python >=3.9,<3.10
+    - python >=3.10,<3.11
     - setuptools
 
   run:
-    - python >=3.9,<3.10
+    - python >=3.10,<3.11
     - qiime2
     - q2templates
     - q2-types
