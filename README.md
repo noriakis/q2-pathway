@@ -61,6 +61,7 @@ Also, `gsea` module is implemented for performing GSEA using `fgsea`, based on t
 
 ```shell
 ## This will run GSEA based on the log2 fold changes calculated from DESeq2
+## If the multiple input data is provided, the module automatically summarizes and compares the results
 qiime pathway gsea \
     --i-ko-table ko_metagenome.qza \
     --m-metadata-file metadata.tsv \
