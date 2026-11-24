@@ -1,12 +1,43 @@
 from os import path
+import os
 import pandas as pd
 import subprocess
 from tempfile import TemporaryDirectory
-import pkg_resources
 import requests
 import hashlib
+from pathlib import Path
+import tarfile
+import argparse
 
-TEMPLATES = pkg_resources.resource_filename("q2_pathway", "assets")
+TEMPLATES = str(Path(__file__).resolve().parent / "assets")
+
+
+def _tokenize_sample_index(
+    seq_table: pd.DataFrame,
+) -> tuple[pd.DataFrame, dict[str, str]]:
+    frame = seq_table.copy()
+    sample_ids = frame.index.astype(str)
+    if sample_ids.has_duplicates:
+        duplicates = sample_ids[sample_ids.duplicated()].unique().tolist()[:5]
+        raise ValueError(f"Duplicate sample IDs: {duplicates}")
+    tokens = [f"q2sample{i:08d}" for i in range(len(sample_ids))]
+    frame.index = tokens
+    return frame, dict(zip(tokens, sample_ids))
+
+
+def _restore_sample_index(
+    table: pd.DataFrame, token_to_sample: dict[str, str]
+) -> pd.DataFrame:
+    result = table.copy()
+    result.index = result.index.astype(str)
+    unknown = sorted(set(result.index) - set(token_to_sample))
+    if unknown:
+        raise ValueError(
+            "Inference output contains unrecognized temporary sample IDs: "
+            + ", ".join(unknown[:5])
+        )
+    result.index = [token_to_sample[token] for token in result.index]
+    return result
 
 
 def infer(
@@ -16,15 +47,20 @@ def infer(
     threads: int = 1,
     full: bool = False,
     full_id: str = None,
+    full_ko_id: str = None,
     pct_id: float = 0.99,
+    max_accepts: int = 0,
+    max_rejects: int = 0
 ) -> pd.DataFrame:
-    """
-    Inference using Piphillin algorithm
+    """Infer KO profiles with Piphillin.
 
+    ``full_id`` filters stratified output by reference-genome ID, whereas
+    ``full_ko_id`` filters by KO ID and avoids expanding unrelated KOs.
     """
     reference_sequences = path.join(database, "16S_seqs.fasta.gz")
     cn_table = path.join(database, "ko_copynum.tsv.gz")
     cn_16s_table = path.join(database, "16S_cn.tsv.gz")
+    tokenized_table, token_to_sample = _tokenize_sample_index(seq_table)
 
     with TemporaryDirectory() as temp_dir:
         repseq = path.join(temp_dir, "rep_seqs.fna")
@@ -32,7 +68,7 @@ def infer(
         with open(repseq, "w") as fna:
             for seqname, sequence in sequences.items():
                 print(">" + str(seqname) + "\n" + str(sequence), file=fna)
-        seq_table.T.to_csv(path.join(temp_dir, "seqtab.txt"), sep="\t")
+        tokenized_table.T.to_csv(path.join(temp_dir, "seqtab.txt"), sep="\t")
         cmd = [
             "vsearch",
             "--usearch_global",
@@ -43,9 +79,9 @@ def infer(
             str(pct_id),
             "--top_hits_only",
             "--maxaccepts",
-            "0",
+            int(max_accepts),
             "--maxrejects",
-            "0",
+            int(max_rejects),
             "--uc_allhits",
             "--blast6out",
             path.join(temp_dir, "blast_out.txt"),
@@ -65,6 +101,7 @@ def infer(
             cn_16s_table,
             str(full),
             str(full_id),
+            str(full_ko_id),
         ]
         try:
             subprocess.run(cmd, check=True)
@@ -76,90 +113,84 @@ def infer(
             ko["ind"] = ko.KO + "|" + ko.ID
             # ko = ko.iloc[:, 3].map(str) + "_" + ko.iloc[:, 1]
             ko = ko.pivot_table(index="ind", columns="sample", values="value").fillna(0)
-            return ko.T
+            return _restore_sample_index(ko.T, token_to_sample)
             ## This will output tax1_K00001 type index
         else:
             ko = pd.read_csv(path.join(temp_dir, "ko_table.tsv"), sep="\t", header=0)
-            return ko.T
+            return _restore_sample_index(ko.T, token_to_sample)
 
 
-def install_t4f2():
-    correct = "5c2edff2f597e5f061f79a5782a27567"
+TAX4FUN2_DB_URL = (
+    "https://zenodo.org/records/10035668/files/Tax4Fun2_ReferenceData_v2.tar.gz"
+)
+TAX4FUN2_DB_MD5 = "5c2edff2f597e5f061f79a5782a27567"
 
-    fn = path.join(TEMPLATES, "Tax4Fun2_ReferenceData_v2.tar.gz")
-    if path.isfile(fn):
-        print("Tax4Fun2 already installed; proceeding.")
-        print("If error was occurred in downloading, please remove " + fn)
-        with open(fn, "rb") as file:
-            fileData = file.read()
-            db_hash = hashlib.md5(fileData).hexdigest()
-        if db_hash != correct:
-            print("Hash incorrect, proceeding anyway.")
-        else:
-            print("Correct hash for database.")
-        return(0)
 
-    fns = []
-    urls = []
-    print("1. Downloading Tax4Fun2 archive...")
-    t4f2_url = "https://zenodo.org/records/10035668/files/Tax4Fun2_1.1.5.tar.gz"
-    fn = path.join(TEMPLATES, "Tax4Fun2_1.1.5.tar.gz")
-    if path.isfile(fn):
-        raise ValueError("The file is already downloaded, please remove "+ fn +" if try to proceed.")
-    fns.append(fn)
-    urls.append(t4f2_url)
+def _default_t4f2_resource_dir() -> Path:
+    configured = os.environ.get("Q2_PATHWAY_TAX4FUN2_DIR")
+    if configured:
+        return Path(configured).expanduser().resolve()
+    return Path.home() / ".cache" / "q2-pathway" / "tax4fun2"
 
-    res = requests.get(t4f2_url, stream=True)
-    if res.status_code == 200:
-        with open(fn, "wb") as file:
-            for chunk in res:
-                file.write(chunk)
 
-    ## Install Tax4Fun2
-    print("2. Installing Tax4Fun2...")
-    cmd = ["R", "CMD", "INSTALL", fn]
-    try:
-        subprocess.run(cmd, check=True)
-    except subprocess.CalledProcessError as _:
-        raise ValueError("Error installing tax4fun2.")
+def _md5(path_to_file: Path) -> str:
+    digest = hashlib.md5()
+    with path_to_file.open("rb") as handle:
+        while chunk := handle.read(1024 * 1024):
+            digest.update(chunk)
+    return digest.hexdigest()
 
-    print("3. Downloading Tax4Fun2 DB...")
-    t4f2_db_url = (
-        "https://zenodo.org/records/10035668/files/Tax4Fun2_ReferenceData_v2.tar.gz"
+
+def install_t4f2(resource_dir: str = None) -> Path:
+    """Download verified Tax4Fun2 reference data to a user-writable cache.
+
+    The installed Python/R package directory is never modified.  Tax4Fun2 itself
+    must already be installed in the active R environment.
+    """
+    target = (
+        Path(resource_dir).expanduser().resolve()
+        if resource_dir is not None
+        else _default_t4f2_resource_dir()
     )
-    fn = path.join(TEMPLATES, "Tax4Fun2_ReferenceData_v2.tar.gz")
-    if path.isfile(fn):
-        raise ValueError("The file is already downloaded, please remove "+ fn +" if try to proceed.")
-    fns.append(fn)
-    urls.append(t4f2_db_url)
+    target.mkdir(parents=True, exist_ok=True)
+    database_dir = target / "Tax4Fun2_ReferenceData_v2"
+    if database_dir.is_dir():
+        return database_dir
 
-    res = requests.get(t4f2_db_url, stream=True)
-    if res.status_code == 200:
-        with open(fn, "wb") as file:
-            for chunk in res:
-                file.write(chunk)
+    archive = target / "Tax4Fun2_ReferenceData_v2.tar.gz"
+    if not archive.is_file():
+        with requests.get(TAX4FUN2_DB_URL, stream=True, timeout=(10, 120)) as response:
+            response.raise_for_status()
+            with archive.open("wb") as handle:
+                for chunk in response.iter_content(chunk_size=1024 * 1024):
+                    if chunk:
+                        handle.write(chunk)
+    digest = _md5(archive)
+    if digest != TAX4FUN2_DB_MD5:
+        archive.unlink(missing_ok=True)
+        raise ValueError("Tax4Fun2 reference database checksum verification failed.")
 
-    hashes = []
-    for fn in fns:
-        with open(fn, "rb") as file:
-            fileData = file.read()
-            hashes.append(hashlib.md5(fileData).hexdigest())
+    with tarfile.open(archive, "r:gz") as tar:
+        root = target.resolve()
+        for member in tar.getmembers():
+            if member.issym() or member.islnk():
+                raise ValueError("Tax4Fun2 database archive contains a link.")
+            destination = (target / member.name).resolve()
+            if root not in destination.parents and destination != root:
+                raise ValueError("Unsafe path in Tax4Fun2 database archive.")
+        tar.extractall(target)
+    if not database_dir.is_dir():
+        raise ValueError("Tax4Fun2 archive did not contain the expected directory.")
+    return database_dir
 
-    """
-    Check database hash
-    """
-    if hashes[1] != correct:
-        print("Hash check for reference database failed. " + fns[1])
 
-    print("4. Extracting archive...")
-    cmd = ["tar", "-zxf", fn[1], "-C", TEMPLATES]
-    try:
-        subprocess.run(cmd, check=True)
-    except subprocess.CalledProcessError as _:
-        raise ValueError("Error extracting tax4fun2 database archive.")
-
-    return(0)
-
+def install_t4f2_cli() -> None:
+    parser = argparse.ArgumentParser(
+        description="Install verified Tax4Fun2 reference data to a user cache."
+    )
+    parser.add_argument("--resource-dir")
+    args = parser.parse_args()
+    print(install_t4f2(args.resource_dir))
 
 
 def infer_t4f2(
@@ -168,6 +199,8 @@ def infer_t4f2(
     threads: int = 1,
     database_mode: str = "Ref99NR",
     pct_id: float = 0.99,
+    resource_dir: str = None,
+    auto_install: bool = False,
 ) -> pd.DataFrame:
     """
     We need a prior installation of Tax4Fun2 in the R in QIIME 2 environment.
@@ -177,13 +210,25 @@ def infer_t4f2(
     The original files are downloaded from: https://zenodo.org/records/10035668.
     """
 
-    """
-    Install the software and database in assets at the first try
-    """
-    install_t4f2()
+    resource_root = (
+        Path(resource_dir).expanduser().resolve()
+        if resource_dir is not None
+        else _default_t4f2_resource_dir()
+    )
+    database_dir = resource_root / "Tax4Fun2_ReferenceData_v2"
+    if not database_dir.is_dir():
+        if auto_install:
+            database_dir = install_t4f2(str(resource_root))
+        else:
+            raise ValueError(
+                "Tax4Fun2 reference data were not found. Run "
+                "q2-pathway-install-tax4fun2-data or pass resource_dir."
+            )
 
     if threads < 1:
         raise ValueError("Thread number should be positive.")
+
+    tokenized_table, token_to_sample = _tokenize_sample_index(seq_table)
 
     with TemporaryDirectory() as temp_dir:
         repseq = path.join(temp_dir, "rep_seqs.fna")
@@ -191,7 +236,7 @@ def infer_t4f2(
         with open(repseq, "w") as fna:
             for seqname, sequence in sequences.items():
                 print(">" + str(seqname) + "\n" + str(sequence), file=fna)
-        seq_table.T.to_csv(path.join(temp_dir, "seqtab.txt"), sep="\t")
+        tokenized_table.T.to_csv(path.join(temp_dir, "seqtab.txt"), sep="\t")
 
         cmd = [
             "Rscript",
@@ -199,7 +244,7 @@ def infer_t4f2(
             temp_dir,
             "rep_seqs.fna",
             "seqtab.txt",
-            path.join(TEMPLATES, "Tax4Fun2_ReferenceData_v2"),
+            str(database_dir),
             str(pct_id),
             str(threads),
             str(database_mode),
@@ -215,4 +260,4 @@ def infer_t4f2(
             index_col=0,
         )
         ko = ko.drop("description", axis=1)
-        return ko.T
+        return _restore_sample_index(ko.T, token_to_sample)
