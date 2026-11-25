@@ -53,7 +53,7 @@ def infer(
     full_ko_id: str = None,
     pct_id: float = 0.99,
     max_accepts: int = 0,
-    max_rejects: int = 0
+    max_rejects: int = 0,
 ) -> pd.DataFrame:
     """Infer KO profiles with Piphillin.
 
@@ -82,9 +82,9 @@ def infer(
             str(pct_id),
             "--top_hits_only",
             "--maxaccepts",
-            int(max_accepts),
+            str(max_accepts),
             "--maxrejects",
-            int(max_rejects),
+            str(max_rejects),
             "--uc_allhits",
             "--blast6out",
             path.join(temp_dir, "blast_out.txt"),

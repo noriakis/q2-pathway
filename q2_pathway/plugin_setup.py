@@ -277,6 +277,8 @@ plugin.methods.register_function(
         "full_id": Str,
         "full_ko_id": Str,
         "pct_id": Float,
+        "max_accepts": "Maximum number of accepted hits per query. Set to 0 for no limit.",
+        "max_rejects": "Maximum number of rejected hits per query. Set to 0 for no limit.",
     },
     parameter_descriptions={
         "threads": "The number of threads",
