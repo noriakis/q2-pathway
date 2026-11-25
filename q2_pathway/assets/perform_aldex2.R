@@ -15,8 +15,8 @@ outImagePath <- argv[5]
 mcSamples <- as.integer(argv[6])
 outputDir <- as.character(argv[7])
 
-abund <- read.table(abundance, sep="\t", row.names=1, header=1)
-meta <- read.table(meta, sep="\t", row.names=1, header=1)
+abund <- read.table(abundance, sep="\t", row.names=1, header=1, check.names=FALSE)
+meta <- read.table(meta, sep="\t", row.names=1, header=1, check.names=FALSE)
 abund_col <- colnames(abund)
 
 abund <- apply(abund, 1, function(x) as.integer(x))

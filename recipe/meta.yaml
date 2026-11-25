@@ -1,13 +1,13 @@
 
 package:
   name: q2-pathway
-  version: 2024.5
+  version: 2026.10.0rc3
 
 source:
   path: ../
 
 build:
-  number: 2
+  number: 0
   script: make install
 
 requirements:
@@ -28,6 +28,7 @@ requirements:
     - numpy
     - scipy
     - pandas
+    - requests
 
   about:
     home: https://github.com/noriakis/q2-pathway

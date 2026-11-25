@@ -3,16 +3,16 @@ import pandas as pd
 import qiime2
 import shutil
 import q2templates
-import numpy as np
 import os
 import json
 import seaborn as sns
 from urllib.parse import quote
 import scipy
 import matplotlib.pyplot as plt
+import pkg_resources
+import numpy as np
 from itertools import combinations
 from qiime2 import Metadata
-import pkg_resources
 
 TEMPLATES = pkg_resources.resource_filename("q2_pathway", "assets")
 ko_url = "https://www.genome.jp/dbget-bin/www_bget?"
@@ -30,7 +30,8 @@ def output_json(prefix, output_dir, output):
         fh.write("');")
 
 
-def summarize(
+## Legacy summarize
+def summarize_detail(
     output_dir: str,
     tables: pd.DataFrame,
     metadata: qiime2.Metadata = None,
@@ -75,8 +76,7 @@ def summarize(
         if tables_name is not None:
             print(tables_name[e] + " : " + str(n))
         else:
-            print("Data " + str(e) +  " : " + str(n))
-
+            print("Data " + str(e) + " : " + str(n))
 
     kos = [ko_table.columns.values for ko_table in tables]
     all_kos = list(set.intersection(*map(set, kos)))
@@ -110,7 +110,6 @@ def summarize(
         metadata_df.to_csv(os.path.join(output_dir, "metadata.tsv"), sep="\t")
 
     filenames = []
-
 
     if candidate is None:
         """
@@ -207,7 +206,7 @@ def summarize(
                 End of Per-KO stratified abundance
                 """
 
-    else: 
+    else:
         """
         Destratified output processing
         """
@@ -246,6 +245,7 @@ def summarize(
             If Wilcoxon-based correlation (Sun et al. 2020.),
             we ignore the `candidate`, `candidate_pathway`, and `first` option.
             """
+
             def signp(x, y):
                 pv = scipy.stats.ranksums(x, y).pvalue
                 return np.log10(pv) * np.sign(np.mean(x) - np.mean(y))
@@ -330,7 +330,6 @@ def summarize(
                         else:
                             output["ko"] = ko
 
-                        
                         """
                         Save the image
                         """
@@ -342,7 +341,7 @@ def summarize(
                     """
                     prefix = prefix + "_corr"
                     if tbl_len > 1:
-                        
+
                         """
                         If multiple tables, append scatterplot
                         This will enlarge the width of the figures
@@ -450,8 +449,10 @@ def summarize(
                     )
                     outp.index.name = "feature-id"
                     outp = outp.reset_index()
-                    outp.columns = ["feature-id","ko","mean"]
-                    outp["thresholded"] = (outp["mean"] > cor_thresh).apply(lambda x: str(x))
+                    outp.columns = ["feature-id", "ko", "mean"]
+                    outp["thresholded"] = (outp["mean"] > cor_thresh).apply(
+                        lambda x: str(x)
+                    )
                     outp.index = outp["feature-id"]
                     outp = outp.drop("feature-id", axis=1)
 
@@ -585,17 +586,17 @@ def contribute(
     shutil.copytree(os.path.join(TEMPLATES, "dist"), os.path.join(output_dir, "dist"))
 
 
-
 def scipy_cor(x, y, method):
     """
     Avoid internal alignment in Series.corr
     """
-    if method=="pearson":
-        return(scipy.stats.pearsonr(x,y)[0])
-    elif method=="spearman":
-        return(scipy.stats.spearmanr(x,y)[0])
+    if method == "pearson":
+        return scipy.stats.pearsonr(x, y)[0]
+    elif method == "spearman":
+        return scipy.stats.spearmanr(x, y)[0]
     else:
-        return(scipy.stats.kendalltau(x,y)[0])
+        return scipy.stats.kendalltau(x, y)[0]
+
 
 def permute(
     output_dir: str,
@@ -614,9 +615,9 @@ def permute(
     Accept only two tables, one is ground truth
     and the other is inference
     """
-    if len(tables)!=2:
+    if len(tables) != 2:
         raise ValueError("Two tables should be provided to this module")
-    
+
     if convert_table is not None:
         """
         Converting table should be Metadata with the column name of "converted".
@@ -640,7 +641,7 @@ def permute(
         samples = [[change[i] if i in change.keys() else i for i in j] for j in samples]
 
     all_samples = list(set.intersection(*map(set, samples)))
-    
+
     if len(all_samples) == 0:
         raise ValueError("No common samples present across datasets")
 
@@ -648,7 +649,6 @@ def permute(
         raise ValueError("No common genes present across datasets")
 
     filenames = []
-
 
     if candidate is None:
         all_cols = all_kos
@@ -665,29 +665,26 @@ def permute(
         kop[1] = kop[1].apply(lambda x: x.split(":")[1])
         all_cols = kop[kop[0].isin([candidate_pathway])][1].tolist()
         all_cols = list(set(all_kos) & set(all_cols))
-        
+
     concs = []
     for e, table in enumerate(tables):
         """
         Rename sample id based on the parameter
         """
         if split_str is not None:
-            table.index = [
-                i.split(quote(split_str))[0] for i in table.index.values
-            ]
+            table.index = [i.split(quote(split_str))[0] for i in table.index.values]
         if convert_table is not None:
             table.index = [
-                change[i] if i in change.keys() else i
-                for i in table.index.values
+                change[i] if i in change.keys() else i for i in table.index.values
             ]
 
         if tables_name is not None:
             table["category"] = tables_name[e]
         else:
             table["category"] = "data" + str(e)
-    
+
         concs.append(table)
-    
+
     permuted = []
     unpermuted = []
     for ko in all_cols:
@@ -697,20 +694,20 @@ def permute(
         for i in range(nperm):
             yp = y.sample(frac=1, random_state=i).tolist()
             permuted.append([scipy_cor(x, yp, method=method), ko])
-            
+
     perm_df = pd.DataFrame(permuted)
     unperm_df = pd.DataFrame(unpermuted)
     perm_df["group"] = "Permuted"
     unperm_df["group"] = "Unpermuted"
     output = pd.concat([perm_df, unperm_df])
-    output.columns = ["value","ko","group"]
-    
+    output.columns = ["value", "ko", "group"]
+
     """
     Plot and save
     """
     prefix = "permute"
     print(output)
-    
+
     plt.figure()
     bp = sns.boxplot(data=output, x="group", y="value")
     fig = bp.get_figure()
@@ -719,11 +716,7 @@ def permute(
 
     csv_path = os.path.join(output_dir, prefix + ".csv")
     output.to_csv(csv_path)
-    output = output.groupby("group").apply(
-        lambda x: x.groupby("ko").mean("value")
-    )
-
-
+    output = output.groupby("group").apply(lambda x: x.groupby("ko").mean("value"))
 
     output_json(prefix, output_dir, output)
     filenames.append(prefix + ".jsonp")

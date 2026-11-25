@@ -13,8 +13,8 @@ condition <- argv[3]
 outputDir <- argv[4]
 
 
-abund <- read.table(abundance, sep="\t", row.names=1, header=1)
-meta <- read.table(meta, sep="\t", row.names=1, header=1)
+abund <- read.table(abundance, sep="\t", row.names=1, header=1, check.names=FALSE)
+meta <- read.table(meta, sep="\t", row.names=1, header=1, check.names=FALSE)
 abund_col <- colnames(abund)
 
 abund <- apply(abund, 1, function(x) as.integer(x))

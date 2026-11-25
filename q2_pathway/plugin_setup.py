@@ -9,6 +9,7 @@ from q2_pathway import (
     CnTsvGzFormat,
     GFCnTsvGzFormat,
     FastaGzFormat,
+    DatabaseManifestFormat,
 )
 
 import importlib
@@ -17,7 +18,7 @@ citations = Citations.load("citations.bib", package="q2_pathway")
 
 plugin = Plugin(
     name="pathway",
-    version="2024.5",
+    version=q2_pathway.__version__,
     website="https://github.com/noriakis/q2-pathway",
     package="q2_pathway",
     description=(
@@ -32,7 +33,6 @@ plugin = Plugin(
         citations["Narayan2020BMCGenomics"],
         citations["Wemheuer2020EnvMicro"],
         citations["Sun2020Microbiome"],
-
     ],
 )
 
@@ -40,7 +40,13 @@ plugin = Plugin(
 plugin.register_semantic_types(PiphillinDatabase)
 
 # Register formats
-plugin.register_formats(PiphillinDatabaseFormat, CnTsvGzFormat, GFCnTsvGzFormat, FastaGzFormat)
+plugin.register_formats(
+    PiphillinDatabaseFormat,
+    CnTsvGzFormat,
+    GFCnTsvGzFormat,
+    FastaGzFormat,
+    DatabaseManifestFormat,
+)
 
 # Define and register new ArtifactClass
 plugin.register_artifact_class(
@@ -63,7 +69,7 @@ plugin.visualizers.register_function(
         "tss": Bool,
         "method": Str,
         "mc_samples": Int,
-        "rank": Str
+        "rank": Str,
     },
     parameter_descriptions={
         "pathway_id": "pathway to visualize, should start with ko.",
@@ -74,11 +80,61 @@ plugin.visualizers.register_function(
         "tss": "total-sum scaling per sample before all the analysis",
         "method": "which value to show in the image",
         "mc_samples": "parameter for ALDEx2::aldex",
-        "rank": "Which column to use for ranking in ALDEx2 and DESeq2."
+        "rank": "Which column to use for ranking in ALDEx2 and DESeq2.",
     },
     name="Plot KEGG PATHWAY",
     description=(
         "Plot the statistics of KO abundances between group on KEGG PATHWAY image."
+    ),
+)
+
+plugin.visualizers.register_function(
+    function=q2_pathway.kegg_multi,
+    inputs={"tables": List[FeatureTable[Frequency]]},
+    input_descriptions={
+        "tables": "method-specific KO abundance tables to display side by side"
+    },
+    parameters={
+        "metadata": Metadata,
+        "pathway_id": Str,
+        "tables_name": List[Str],
+        "metadata_column": Str,
+        "level1": Str,
+        "level2": Str,
+        "map_ko": Bool,
+        "low_color": Str,
+        "mid_color": Str,
+        "high_color": Str,
+        "missing_color": Str,
+        "tss": Bool,
+        "method": Str,
+        "rank": Str,
+        "mc_samples": Int,
+        "direction_threshold": Float,
+        "min_methods": Int,
+    },
+    parameter_descriptions={
+        "pathway_id": "KEGG pathway identifier, for example ko00280.",
+        "tables_name": "Labels and left-to-right node subdivision order, one per KO table.",
+        "metadata_column": "Categorical metadata column to compare. If omitted, all eligible categorical columns are used.",
+        "level1": "First group; the displayed direction is level1 minus level2.",
+        "level2": "Second group; must be supplied together with level1.",
+        "map_ko": "Include KEGG KO descriptions in the node-level output table.",
+        "low_color": "Color for negative statistics.",
+        "mid_color": "Color for zero statistics.",
+        "high_color": "Color for positive statistics.",
+        "missing_color": "Color for a KO not available from a prediction output.",
+        "tss": "Apply total-sum scaling before Welch statistics.",
+        "method": "KO-level statistic: t, deseq2, or aldex2.",
+        "rank": "Statistic column for DESeq2 or ALDEx2; defaults to log2FoldChange or effect.",
+        "mc_samples": "Monte Carlo samples used by ALDEx2.",
+        "direction_threshold": "Required fraction of non-zero method statistics sharing one direction.",
+        "min_methods": "Minimum number of directional method statistics needed to label a KO direction-consistent.",
+    },
+    name="Plot multiple prediction outputs on one KEGG pathway",
+    description=(
+        "Display one colored subdivision per prediction output in every KEGG node, "
+        "using a shared color scale and exporting the underlying KO statistics."
     ),
 )
 
@@ -100,6 +156,13 @@ plugin.visualizers.register_function(
         "min_size": Int,
         "max_size": Int,
         "split_str": Str,
+        "table_roles": List[Str],
+        "algorithm_families": List[Str],
+        "top_set_alpha": Float,
+        "consensus_alpha": Float,
+        "direction_threshold": Float,
+        "min_families": Int,
+        "p_adjust_method": Str,
     },
     parameter_descriptions={
         "tss": "total-sum scaling per sample before all the analysis",
@@ -113,7 +176,14 @@ plugin.visualizers.register_function(
         "same": "Use same gene set across the gene family tables",
         "min_size": "parameter in fgsea: Minimal size of a gene set to test",
         "max_size": "parameter in fgsea: Maximal size of a gene set to test",
-        "split_str": "Split the sample name and take the first argument, effective for all tables"
+        "split_str": "Split the sample name and take the first argument, effective for all tables",
+        "table_roles": "One role per table: prediction or reference. Reference tables are held out from consensus scoring.",
+        "algorithm_families": "One algorithm family per table. Database variants from the same algorithm should share a family name.",
+        "top_set_alpha": "Adjusted-p threshold used for overlap, intersection, and majority-vote diagnostics.",
+        "consensus_alpha": "Adjusted-p threshold used to report consensus pathways.",
+        "direction_threshold": "Minimum fraction of algorithm families agreeing on NES direction.",
+        "min_families": "Minimum number of prediction algorithm families required for consensus.",
+        "p_adjust_method": "Multiple-testing correction for combined pathway p-values: bh or bonferroni.",
     },
     name="Perform GSEA by the R package fgsea",
     description=("Perform GSEA by the R package fgsea"),
@@ -121,6 +191,36 @@ plugin.visualizers.register_function(
 
 plugin.visualizers.register_function(
     function=q2_pathway.summarize,
+    inputs={"tables": List[FeatureTable[Frequency]]},
+    input_descriptions={"tables": "list of tables containing KO abundance per sample"},
+    parameters={
+        "metadata": Metadata,
+        "tss": Bool,
+        "split_str": Str,
+        "convert_table": Metadata,
+        "tables_name": List[Str],
+        "table_roles": List[Str],
+        "algorithm_families": List[Str],
+        "zero_replacement": Float,
+    },
+    parameter_descriptions={
+        "tss": (
+            "Compatibility flag. KO diagnostics always close each sample before "
+            "zero replacement and CLR, so this flag does not change the result."
+        ),
+        "split_str": 'Split the string of column names and takes the first argument, e.g. if XXXX_1234_5678 and "_" is specified, the column will be converted to XXX',
+        "convert_table": 'Converting table artifact (Column name "converted" will be used)',
+        "tables_name": "table name for the output, must be the same length as the specified table list",
+        "table_roles": "One role per table: prediction or reference.",
+        "algorithm_families": "One algorithm family per table; database variants should share a family.",
+        "zero_replacement": "Zero-replacement value applied after closure and before CLR.",
+    },
+    name="Summarize the output of functional prediction.",
+    description=("Summarize the output of functional prediction."),
+)
+
+plugin.visualizers.register_function(
+    function=q2_pathway.summarize_detail,
     inputs={"tables": List[FeatureTable[Frequency]]},
     input_descriptions={"tables": "list of tables containing KO abundance per sample"},
     parameters={
@@ -158,7 +258,6 @@ plugin.visualizers.register_function(
     description=("Summarize the output of functional prediction."),
 )
 
-
 plugin.methods.register_function(
     function=q2_pathway.infer,
     inputs={
@@ -176,12 +275,14 @@ plugin.methods.register_function(
         "threads": Int,
         "full": Bool,
         "full_id": Str,
+        "full_ko_id": Str,
         "pct_id": Float,
     },
     parameter_descriptions={
         "threads": "The number of threads",
         "full": "Output the full stratified table",
-        "full_id": "When the full stratified table is calculated, only this ID will be remained.",
+        "full_id": "When the full stratified table is calculated, retain only this reference-genome ID.",
+        "full_ko_id": "When the full stratified table is calculated, retain only this KO ID.",
         "pct_id": "Percent of identity, default to 0.99",
     },
     name="Run Piphillin algorithm",
@@ -199,11 +300,19 @@ plugin.methods.register_function(
         "seq_table": "Sequence count table",
     },
     outputs=[("table", FeatureTable[Frequency])],
-    parameters={"threads": Int, "pct_id": Float, "database_mode": Str},
+    parameters={
+        "threads": Int,
+        "pct_id": Float,
+        "database_mode": Str,
+        "resource_dir": Str,
+        "auto_install": Bool,
+    },
     parameter_descriptions={
         "threads": "The number of threads",
         "pct_id": "Percent of identity, default to 0.99",
         "database_mode": "Ref99NR or Ref100NR",
+        "resource_dir": "User-writable directory containing Tax4Fun2_ReferenceData_v2.",
+        "auto_install": "Download verified reference data when absent.",
     },
     name="Run Tax4Fun2 algorithm",
     description=("Run Tax4Fun2 algorithm"),
@@ -244,7 +353,9 @@ plugin.visualizers.register_function(
 plugin.visualizers.register_function(
     function=q2_pathway.permute,
     inputs={"tables": List[FeatureTable[Frequency]]},
-    input_descriptions={"tables": "list of two tables containing KO abundance per sample"},
+    input_descriptions={
+        "tables": "list of two tables containing KO abundance per sample"
+    },
     parameters={
         "tss": Bool,
         "method": Str,
@@ -263,7 +374,7 @@ plugin.visualizers.register_function(
         "split_str": 'Split the string of column names and takes the first argument, e.g. if XXXX_1234_5678 and "_" is specified, the column will be converted to XXX',
         "convert_table": 'Converting table artifact (Column name "convert" will be used)',
         "tables_name": "table name for the output, must be the same length as the specified table list",
-        "nperm": "Number of permutations"
+        "nperm": "Number of permutations",
     },
     name="Assess correlation of the output of functional prediction based on permutation.",
     description=("Summarize the output of functional prediction."),
