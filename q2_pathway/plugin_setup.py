@@ -277,8 +277,9 @@ plugin.methods.register_function(
         "full_id": Str,
         "full_ko_id": Str,
         "pct_id": Float,
-        "max_accepts": "Maximum number of accepted hits per query. Set to 0 for no limit.",
-        "max_rejects": "Maximum number of rejected hits per query. Set to 0 for no limit.",
+        "max_accepts": Int,
+        "max_rejects": Int,
+
     },
     parameter_descriptions={
         "threads": "The number of threads",
@@ -286,6 +287,9 @@ plugin.methods.register_function(
         "full_id": "When the full stratified table is calculated, retain only this reference-genome ID.",
         "full_ko_id": "When the full stratified table is calculated, retain only this KO ID.",
         "pct_id": "Percent of identity, default to 0.99",
+        "max_accepts": "Maximum number of accepted hits per query. Set to 0 for no limit.",
+        "max_rejects": "Maximum number of rejected hits per query. Set to 0 for no limit.",
+
     },
     name="Run Piphillin algorithm",
     description=("Run Piphillin algorithm"),
