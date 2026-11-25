@@ -15,6 +15,9 @@ TEMPLATES = str(Path(__file__).resolve().parent / "assets")
 def _tokenize_sample_index(
     seq_table: pd.DataFrame,
 ) -> tuple[pd.DataFrame, dict[str, str]]:
+    """
+    for the safe read in R environment
+    """
     frame = seq_table.copy()
     sample_ids = frame.index.astype(str)
     if sample_ids.has_duplicates:

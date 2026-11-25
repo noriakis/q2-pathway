@@ -12,6 +12,17 @@ import scipy
 from urllib.parse import quote
 from itertools import combinations
 import subprocess
+import zipfile
+import re
+import textwrap
+
+from ._consensus import summarize_gsea_directory
+from ._stats import (
+    harmonize_samples_for_visualization,
+    summarize_direction_statistics,
+    validate_table_annotations,
+    welch_t_statistics,
+)
 
 ko_url = "https://www.genome.jp/dbget-bin/www_bget?"
 TEMPLATES = pkg_resources.resource_filename("q2_pathway", "assets")
@@ -31,7 +42,6 @@ def kegg(
     rank: str = None,
     mc_samples: int = 128,
 ) -> None:
-    
     """
     Specify ranking to be plotted,
     if not specified
@@ -50,8 +60,10 @@ def kegg(
     try:
         import pykegg
     except ImportError:
-        raise ImportError("Please install `pykegg` for this module by running `pip install pykegg`")
-        
+        raise ImportError(
+            "Please install `pykegg` for this module by running `pip install pykegg`"
+        )
+
     if tss:
         ko_table = ko_table.apply(lambda x: x / sum(x), axis=1)
         if method == "aldex2":
@@ -221,11 +233,8 @@ def kegg(
                 prefixes.append(prefix)
 
                 deseq2path = path.join(output_dir, "deseq2_res_" + prefix + ".tsv")
-                deseq2imagepath = path.join(
-                    output_dir, "deseq2_res_" + prefix + ".png"
-                )
+                deseq2imagepath = path.join(output_dir, "deseq2_res_" + prefix + ".png")
 
-                
                 """
                 Make two conditions
                 """
@@ -300,10 +309,15 @@ def kegg(
             nodes[prefix] = nodes[prefix].fillna("#808080")
 
             if highlight is not None:
-                highlight_nodes = ["ko:"+i for i in highlight_df[highlight_df.thresholded=="True"].index.values]
+                highlight_nodes = [
+                    "ko:" + i
+                    for i in highlight_df[
+                        highlight_df.thresholded == "True"
+                    ].index.values
+                ]
                 highlight_value = []
                 for node in nodes["name"]:
-                    in_node = [i.replace("...","") for i in node.split(" ")]
+                    in_node = [i.replace("...", "") for i in node.split(" ")]
                     intersect = set(in_node) & set(highlight_nodes)
                     if len(intersect) > 0:
                         highlight_value.append(True)
@@ -318,7 +332,7 @@ def kegg(
                     pid=pathway_id,
                     fill_color=prefix,
                     transparent_colors=["#BFBFFF", "#FFFFFF", "#BFFFBF"],
-                    highlight_nodes="highlight"
+                    highlight_nodes="highlight",
                 )
             else:
                 kegg_map_image1 = pykegg.overlay_opencv_image(
@@ -327,7 +341,6 @@ def kegg(
                     fill_color=prefix,
                     transparent_colors=["#BFBFFF", "#FFFFFF", "#BFFFBF"],
                 )
-
 
             kegg_map_image2 = pykegg.append_legend(
                 kegg_map_image1,
@@ -408,10 +421,13 @@ def kegg(
         Mark high correlation if specified
         """
         if highlight is not None:
-            highlight_nodes = ["ko:"+i for i in highlight_df[highlight_df.thresholded=="True"].index.values]
+            highlight_nodes = [
+                "ko:" + i
+                for i in highlight_df[highlight_df.thresholded == "True"].index.values
+            ]
             highlight_value = []
             for node in nodes["name"]:
-                in_node = [i.replace("...","") for i in node.split(" ")]
+                in_node = [i.replace("...", "") for i in node.split(" ")]
                 intersect = set(in_node) & set(highlight_nodes)
                 if len(intersect) > 0:
                     highlight_value.append(True)
@@ -423,7 +439,7 @@ def kegg(
                 pid=pathway_id,
                 fill_color="concat",
                 transparent_colors=["#BFBFFF", "#FFFFFF", "#BFFFBF"],
-                highlight_nodes="highlight"
+                highlight_nodes="highlight",
             )
         else:
             kegg_map_image1 = pykegg.overlay_opencv_image(
@@ -432,8 +448,6 @@ def kegg(
                 fill_color="concat",
                 transparent_colors=["#BFBFFF", "#FFFFFF", "#BFFFBF"],
             )
-
-
 
         kegg_map_image2 = pykegg.append_legend(
             kegg_map_image1,
@@ -472,6 +486,383 @@ def kegg(
     shutil.copytree(os.path.join(TEMPLATES, "dist"), os.path.join(output_dir, "dist"))
 
 
+def _safe_output_label(value: str) -> str:
+    """Return a stable filename component without changing the display label."""
+    label = re.sub(r"[^A-Za-z0-9._-]+", "_", str(value)).strip("._")
+    return label or "unnamed"
+
+
+def _append_method_order(image: Image.Image, table_names: list[str]) -> Image.Image:
+    """Add the left-to-right node subdivision order below a KEGG image."""
+    label = "Node subdivisions (left to right): " + " | ".join(
+        f"{i + 1}. {name}" for i, name in enumerate(table_names)
+    )
+    lines = textwrap.wrap(label, width=105) or [label]
+    from PIL import ImageDraw, ImageFont
+
+    try:
+        font = ImageFont.truetype("DejaVuSans.ttf", 14)
+    except OSError:
+        font = ImageFont.load_default()
+    line_height = 20
+    footer_height = 12 + line_height * len(lines)
+    canvas = Image.new("RGB", (image.width, image.height + footer_height), "white")
+    canvas.paste(image.convert("RGB"), (0, 0))
+    draw = ImageDraw.Draw(canvas)
+    for i, line in enumerate(lines):
+        draw.text((10, image.height + 6 + i * line_height), line, fill="black", font=font)
+    return canvas
+
+
+def _r_method_statistics(
+    table: pd.DataFrame,
+    metadata_df: pd.DataFrame,
+    column: str,
+    level1: str,
+    level2: str,
+    method: str,
+    rank: str,
+    mc_samples: int,
+    work_dir: str,
+) -> pd.Series:
+    """Run the existing R differential-statistic helpers for one KO table."""
+    os.makedirs(work_dir, exist_ok=True)
+    selected = metadata_df[
+        metadata_df[column].astype(str).isin([str(level1), str(level2)])
+    ][[column]].copy()
+    selected = selected.loc[selected.index.intersection(table.index)]
+    selected = selected.loc[table.index.intersection(selected.index)]
+    selected_table = table.loc[selected.index]
+    if selected[column].astype(str).value_counts().reindex(
+        [str(level1), str(level2)], fill_value=0
+    ).min() < 2:
+        raise ValueError(
+            "Differential statistics require at least two samples in each group."
+        )
+
+    table_path = os.path.join(work_dir, "ko_table.tsv")
+    metadata_path = os.path.join(work_dir, "metadata.tsv")
+    result_path = os.path.join(work_dir, "statistics.tsv")
+    image_path = os.path.join(work_dir, "diagnostic.png")
+    selected_table.to_csv(table_path, sep="\t")
+    selected.to_csv(metadata_path, sep="\t")
+
+    if method == "deseq2":
+        subprocess.run(
+            [
+                "Rscript",
+                path.join(TEMPLATES, "make_deseq2.R"),
+                table_path,
+                metadata_path,
+                column,
+                work_dir,
+            ],
+            check=True,
+        )
+        subprocess.run(
+            [
+                "Rscript",
+                path.join(TEMPLATES, "perform_deseq2.R"),
+                table_path,
+                metadata_path,
+                column,
+                result_path,
+                image_path,
+                str(level1),
+                str(level2),
+                work_dir,
+            ],
+            check=True,
+        )
+    elif method == "aldex2":
+        subprocess.run(
+            [
+                "Rscript",
+                path.join(TEMPLATES, "perform_aldex2.R"),
+                table_path,
+                metadata_path,
+                column,
+                result_path,
+                image_path,
+                str(mc_samples),
+                work_dir,
+            ],
+            check=True,
+        )
+    else:
+        raise ValueError("method must be t, deseq2, or aldex2.")
+
+    result = pd.read_csv(result_path, sep="\t", index_col=0)
+    if rank not in result.columns:
+        raise ValueError(f"Statistic column {rank!r} was not produced by {method}.")
+    return pd.to_numeric(result[rank], errors="coerce")
+
+
+def kegg_multi(
+    output_dir: str,
+    tables: list[pd.DataFrame],
+    metadata: qiime2.Metadata,
+    pathway_id: str,
+    tables_name: list[str] = None,
+    metadata_column: str = None,
+    level1: str = None,
+    level2: str = None,
+    map_ko: bool = False,
+    low_color: str = "blue",
+    mid_color: str = "white",
+    high_color: str = "red",
+    missing_color: str = "#808080",
+    tss: bool = False,
+    method: str = "t",
+    rank: str = None,
+    mc_samples: int = 128,
+    direction_threshold: float = 1.0,
+    min_methods: int = 2,
+) -> None:
+    """Map method-specific KO statistics side by side on each KEGG node.
+
+    Every node subdivision corresponds to one input table in ``tables_name``
+    order.  Samples are harmonized globally, but KO catalogues are not
+    intersected: a KO absent from a method is rendered with ``missing_color``.
+    """
+    if len(tables) < 2:
+        raise ValueError("kegg_multi requires at least two KO tables.")
+    names = (
+        [f"data{i}" for i in range(len(tables))]
+        if tables_name is None
+        else [str(name).strip() for name in tables_name]
+    )
+    if len(names) != len(tables):
+        raise ValueError("tables_name must have one value per input table.")
+    if any(not name for name in names) or len(set(names)) != len(names):
+        raise ValueError("tables_name values must be non-empty and unique.")
+
+    method = str(method).lower()
+    if method not in {"t", "deseq2", "aldex2"}:
+        raise ValueError("method must be t, deseq2, or aldex2.")
+    if tss and method in {"deseq2", "aldex2"}:
+        raise ValueError("tss cannot be combined with DESeq2 or ALDEx2.")
+    if rank is None:
+        rank = {"t": "statistic", "deseq2": "log2FoldChange", "aldex2": "effect"}[
+            method
+        ]
+
+    metadata_df = metadata.to_dataframe()
+    tables, metadata_df, harmonization = harmonize_samples_for_visualization(
+        tables, metadata_df, names
+    )
+    if tss:
+        tables = [table.div(table.sum(axis=1), axis=0) for table in tables]
+
+    harmonization.to_csv(
+        os.path.join(output_dir, "sample_harmonization.tsv"), sep="\t", index=False
+    )
+    pd.DataFrame(
+        {
+            "subdivision": range(1, len(names) + 1),
+            "table_name": names,
+        }
+    ).to_csv(os.path.join(output_dir, "method_order.tsv"), sep="\t", index=False)
+
+    if metadata_column is not None:
+        if metadata_column not in metadata_df.columns:
+            raise ValueError(f"Metadata column {metadata_column!r} was not found.")
+        columns = [metadata_column]
+    else:
+        columns = [
+            column
+            for column in metadata_df.columns
+            if not pd.api.types.is_numeric_dtype(metadata_df[column])
+            and 1 < metadata_df[column].nunique(dropna=True) < len(metadata_df)
+        ]
+    if not columns:
+        raise ValueError("No categorical metadata column is available for comparison.")
+    if (level1 is None) != (level2 is None):
+        raise ValueError("level1 and level2 must be provided together.")
+    if level1 is not None and metadata_column is None:
+        raise ValueError("metadata_column is required when selecting levels.")
+
+    try:
+        import pykegg
+    except ImportError as error:
+        raise ImportError(
+            "Please install pykegg for KEGG pathway rendering: pip install pykegg"
+        ) from error
+
+    graph = pykegg.KGML_graph(pid=pathway_id)
+    base_nodes = graph.get_nodes()
+    base_nodes = base_nodes[base_nodes.original_type == "ortholog"].copy()
+    pathway_kos = {
+        ko.replace("...", "")
+        for node in base_nodes["name"].astype(str)
+        for ko in node.split(" ")
+    }
+    ko_descriptions = None
+    if map_ko:
+        ko_names = pd.read_csv("https://rest.kegg.jp/list/ko", sep="\t", header=None)
+        ko_names.index = ko_names[0].apply(lambda value: "ko:" + value)
+        ko_descriptions = ko_names[1].to_dict()
+
+    filenames = []
+    for column in columns:
+        available_levels = sorted(
+            metadata_df[column].dropna().astype(str).unique().tolist()
+        )
+        if level1 is not None:
+            if str(level1) not in available_levels or str(level2) not in available_levels:
+                raise ValueError("The selected levels are absent from the metadata column.")
+            contrasts = [(str(level1), str(level2))]
+        else:
+            contrasts = list(combinations(available_levels, 2))
+
+        for first_level, second_level in contrasts:
+            contrast_label = f"{column}_{first_level}_vs_{second_level}"
+            safe_contrast = _safe_output_label(contrast_label)
+            method_stats: dict[str, pd.Series] = {}
+            for index, (name, table) in enumerate(zip(names, tables)):
+                if method == "t":
+                    statistic = welch_t_statistics(
+                        table,
+                        metadata_df[column],
+                        first_level,
+                        second_level,
+                    )
+                else:
+                    statistic = _r_method_statistics(
+                        table,
+                        metadata_df,
+                        column,
+                        first_level,
+                        second_level,
+                        method,
+                        rank,
+                        mc_samples,
+                        os.path.join(
+                            output_dir,
+                            "method_diagnostics",
+                            f"{index + 1}_{_safe_output_label(name)}",
+                            safe_contrast,
+                        ),
+                    )
+                statistic.index = statistic.index.astype(str).str.removeprefix("ko:")
+                method_stats[name] = statistic
+
+            union_kos = sorted(
+                set().union(*(set(statistic.index) for statistic in method_stats.values()))
+            )
+            ko_statistics = pd.DataFrame(index=union_kos)
+            for name in names:
+                ko_statistics[name] = method_stats[name].reindex(union_kos)
+            support = summarize_direction_statistics(
+                ko_statistics,
+                direction_threshold=direction_threshold,
+                min_methods=min_methods,
+            )
+            support.index.name = "KO"
+            support_path = f"ko_support_{safe_contrast}.tsv"
+            support.to_csv(os.path.join(output_dir, support_path), sep="\t")
+
+            finite_pathway_values = []
+            for statistic in method_stats.values():
+                for ko_id, value in statistic.items():
+                    prefixed = ko_id if ko_id.startswith("ko:") else "ko:" + ko_id
+                    if prefixed in pathway_kos and np.isfinite(value):
+                        finite_pathway_values.append(float(value))
+            if not finite_pathway_values:
+                raise ValueError(
+                    f"No finite KO statistics map to {pathway_id} for {contrast_label}."
+                )
+            color_limit = max(abs(value) for value in finite_pathway_values)
+            if color_limit == 0:
+                color_limit = 1.0
+
+            nodes = base_nodes.copy()
+            color_columns = []
+            statistic_columns = []
+            for index, name in enumerate(names):
+                color_column = f"method_color_{index + 1}"
+                statistic_column = f"statistic_{index + 1}"
+                values = {
+                    (ko if ko.startswith("ko:") else "ko:" + ko): float(value)
+                    for ko, value in method_stats[name].items()
+                    if np.isfinite(value)
+                }
+                nodes = pykegg.append_colors_continuous_values(
+                    nodes,
+                    values,
+                    new_color_column=color_column,
+                    two_slope=True,
+                    center_value=0,
+                    node_name_column="name",
+                    delim=" ",
+                    colors=[low_color, mid_color, high_color],
+                    orig_value=statistic_column,
+                    fix_min=-color_limit,
+                    fix_center=0,
+                    fix_max=color_limit,
+                )
+                nodes[color_column] = nodes[color_column].fillna(missing_color)
+                color_columns.append(color_column)
+                statistic_columns.append(statistic_column)
+            nodes["method_colors"] = nodes[color_columns].values.tolist()
+
+            rendered = pykegg.overlay_opencv_image(
+                nodes,
+                pid=pathway_id,
+                fill_color="method_colors",
+                transparent_colors=["#BFBFFF", "#FFFFFF", "#BFFFBF"],
+            )
+            rendered = pykegg.append_legend(
+                rendered,
+                min_value=-color_limit,
+                max_value=color_limit,
+                center_value=0,
+                two_slope=True,
+                colors=[low_color, mid_color, high_color],
+                width=4,
+                label=f"{rank}: {first_level} - {second_level}",
+            )
+            rendered_image = _append_method_order(Image.fromarray(rendered), names)
+            image_name = f"multi_{safe_contrast}_{_safe_output_label(pathway_id)}.png"
+            rendered_image.save(os.path.join(output_dir, image_name))
+
+            node_output = nodes.loc[:, ["name"] + statistic_columns].copy()
+            node_output.columns = ["KEGG_node"] + names
+            if ko_descriptions is not None:
+                node_output["description"] = node_output["KEGG_node"].apply(
+                    lambda value: " | ".join(
+                        ko_descriptions.get(ko, "") for ko in value.split(" ")
+                    )
+                )
+            node_path = f"node_statistics_{safe_contrast}.tsv"
+            node_output.to_csv(os.path.join(output_dir, node_path), sep="\t", index=False)
+            node_output["KEGG_node"] = node_output["KEGG_node"].apply(
+                lambda value: " ".join(
+                    f'<a href="{ko_url}{ko}">{ko}</a>' for ko in value.split(" ")
+                )
+            )
+
+            jsonp = f"multi_{safe_contrast}.jsonp"
+            with open(os.path.join(output_dir, jsonp), "w") as handle:
+                handle.write(f'load_data("{safe_contrast}",')
+                json.dump(image_name, handle)
+                handle.write(",'" )
+                table_html = q2templates.df_to_html(node_output, escape=False)
+                handle.write(table_html.replace("\n", "").replace("'", "\\'"))
+                handle.write("','")
+                handle.write(quote(node_path))
+                handle.write("');")
+            filenames.append(jsonp)
+
+    index_path = os.path.join(TEMPLATES, "index.html")
+    q2templates.render(
+        index_path,
+        output_dir,
+        context={"columns": [quote(filename) for filename in filenames]},
+    )
+    shutil.copytree(os.path.join(TEMPLATES, "dist"), os.path.join(output_dir, "dist"))
+
+
 def trunc(x):
     tmp = x.split("/")
     if len(tmp) >= 5:
@@ -479,6 +870,7 @@ def trunc(x):
     else:
         truncstr = "/".join(tmp)
     return truncstr
+
 
 def gsea(
     output_dir: str,
@@ -496,6 +888,13 @@ def gsea(
     min_size: int = 0,
     max_size: int = 500,
     split_str: str = None,
+    table_roles: list = None,
+    algorithm_families: list = None,
+    top_set_alpha: float = 0.05,
+    consensus_alpha: float = 0.05,
+    direction_threshold: float = 0.8,
+    min_families: int = 2,
+    p_adjust_method: str = "bh",
 ):
     """
     Perform gene set enrichment analysis based on pathway to KO relationship
@@ -504,7 +903,7 @@ def gsea(
 
     [TODO] More controlling options for fgsea parameters.
     Currently, min and max gene set size can be controlled.
-    
+
     Parameters:
     -----------
     rank: str
@@ -515,6 +914,14 @@ def gsea(
         Methods to rank the gene families per tables.
         If one method is specified, the method will be used for all the tables.
     """
+    table_names, table_roles, algorithm_families = validate_table_annotations(
+        len(tables),
+        tables_name,
+        table_roles,
+        algorithm_families,
+        min_predictions=1,
+    )
+
     if len(methods) > 1:
         if len(methods) != len(tables):
             raise ValueError("Method length and table length do not match")
@@ -534,14 +941,20 @@ def gsea(
             raise ValueError("DESeq2 is for the raw count data.")
 
     if split_str is not None:
-        tables = [table.set_axis([i.split(quote(split_str))[0] for i in table.index.values.tolist()]) for table in tables]
+        tables = [
+            table.set_axis(
+                [i.split(quote(split_str))[0] for i in table.index.values.tolist()]
+            )
+            for table in tables
+        ]
 
     filenames = []
+    gsea_run_records = []
 
     if map_pathway:
         if module:
             kon = pd.read_csv("https://rest.kegg.jp/list/module", sep="\t", header=None)
-            kon[0] = kon[0].apply(lambda x: str("md:") + str(x))        
+            kon[0] = kon[0].apply(lambda x: str("md:") + str(x))
             kon.to_csv(
                 os.path.join(output_dir, "pathway_names.tsv"),
                 sep="\t",
@@ -550,7 +963,9 @@ def gsea(
             )
             konflag = 1
         else:
-            kon = pd.read_csv("https://rest.kegg.jp/list/pathway", sep="\t", header=None)
+            kon = pd.read_csv(
+                "https://rest.kegg.jp/list/pathway", sep="\t", header=None
+            )
             kon[0] = kon[0].apply(lambda x: x.replace("map", "path:ko"))
             kon.to_csv(
                 os.path.join(output_dir, "pathway_names.tsv"),
@@ -558,7 +973,7 @@ def gsea(
                 index=False,
                 header=None,
             )
-            konflag = 1            
+            konflag = 1
     else:
         konflag = 0
 
@@ -588,27 +1003,24 @@ def gsea(
     """
     metadata.save(os.path.join(output_dir, "metadata.tsv"))
 
-
     for e, ko_table in enumerate(tables):
         method = methods[e]
         print("Dataset " + str(e) + ": method " + method)
-        if rank is None:
+        dataset_rank = rank
+        if dataset_rank is None:
             if method == "aldex2":
-                rank = "effect"
+                dataset_rank = "effect"
             if method == "deseq2":
-                rank = "log2FoldChange"
+                dataset_rank = "log2FoldChange"
 
-        if tables_name is not None:
-            dataset_name = tables_name[e]
-        else:
-            dataset_name = "data" + str(e)
+        dataset_name = table_names[e]
 
         """
         Filter columns
         """
         tmp_metadata = metadata.filter_ids(ko_table.index)
-        tmp_metadata = metadata.filter_columns(column_type="categorical")
-        tmp_metadata = metadata.filter_columns(
+        tmp_metadata = tmp_metadata.filter_columns(column_type="categorical")
+        tmp_metadata = tmp_metadata.filter_columns(
             drop_all_unique=True, drop_zero_variance=True, drop_all_missing=True
         )
 
@@ -652,6 +1064,7 @@ def gsea(
                 ## User control for ordering these values
                 level1 = comb[0]
                 level2 = comb[1]
+                contrast_id = f"{column}__{level1}_vs_{level2}"
 
                 if method == "t":
                     """
@@ -721,7 +1134,7 @@ def gsea(
                         raise ValueError("ALDEx2 cannot be performed")
                     res = pd.read_csv(aldexpath, sep="\t", index_col=0, header=0)
 
-                    val = res[rank]
+                    val = res[dataset_rank]
                     val.index = ["ko:" + i for i in val.index.values]
                     val.to_csv(
                         os.path.join(output_dir, "values_" + prefix + ".tsv"),
@@ -760,7 +1173,6 @@ def gsea(
                         dataset_name + "_" + column + "_" + level1 + "_vs_" + level2
                     )
 
-
                     deseq2path = path.join(output_dir, "deseq2_res_" + prefix + ".tsv")
                     deseq2imagepath = path.join(
                         output_dir, "deseq2_res_" + prefix + ".png"
@@ -787,7 +1199,7 @@ def gsea(
                         )
                     res = pd.read_csv(deseq2path, sep="\t", index_col=0, header=0)
 
-                    val = res[rank]
+                    val = res[dataset_rank]
                     val.index = ["ko:" + i for i in val.index.values]
 
                     val.to_csv(
@@ -832,7 +1244,7 @@ def gsea(
                     str(konflag),
                     bg,
                     str(min_size),
-                    str(max_size)
+                    str(max_size),
                 ]
                 try:
                     res = subprocess.run(cmd, check=True)
@@ -865,7 +1277,19 @@ def gsea(
                 gseares["leadingEdge"] = gseares["leadingEdge"].apply(
                     lambda x: trunc(x)
                 )
-
+                gsea_run_records.append(
+                    {
+                        "dataset": dataset_name,
+                        "role": table_roles[e],
+                        "algorithm_family": algorithm_families[e],
+                        "method": method,
+                        "column": column,
+                        "level1": level1,
+                        "level2": level2,
+                        "contrast_id": contrast_id,
+                        "prefix": prefix,
+                    }
+                )
                 """
                 The same structure as kegg
                 """
@@ -881,7 +1305,44 @@ def gsea(
                 filenames.append(jsonp)
 
     index = os.path.join(TEMPLATES, "index.html")
-    q2templates.render(
-        index, output_dir, context={"columns": [quote(fn) for fn in filenames]}
+    downloads = []
+
+    ## Finally, concatenate gsea results and summarize
+    pd.DataFrame(gsea_run_records).to_csv(
+        os.path.join(output_dir, "gsea_runs.tsv"), sep="\t", index=False
     )
-    shutil.copytree(os.path.join(TEMPLATES, "dist"), os.path.join(output_dir, "dist"))
+    try:
+        summarize_gsea_directory(
+            output_dir,
+            output_dir,
+            top_set_alpha=top_set_alpha,
+            consensus_alpha=consensus_alpha,
+            direction_threshold=direction_threshold,
+            min_families=min_families,
+            p_adjust_method=p_adjust_method,
+        )
+    except (ValueError, FileNotFoundError) as error:
+        raise ValueError(
+            "GSEA summary (correlation/consensus) cannot be performed: " + str(error)
+        ) from error
+    zip_name = "GSEA_final_outputs.zip"
+    zip_path = os.path.join(output_dir, zip_name)
+
+    with zipfile.ZipFile(zip_path, "w", compression=zipfile.ZIP_DEFLATED) as z:
+        for fn in os.listdir(output_dir):
+            if fn != zip_name:
+                print(fn)
+                fp = os.path.join(output_dir, fn)
+                if os.path.exists(fp):
+                    z.write(fp, arcname=fn)
+
+    downloads.append({"href": zip_name, "label": zip_name})
+    q2templates.render(
+        index,
+        output_dir,
+        context={
+            "columns": [quote(fn) for fn in filenames],
+            "downloads": downloads,
+        },
+    )
+    # shutil.copytree(os.path.join(TEMPLATES, "dist"), os.path.join(output_dir, "dist"))
